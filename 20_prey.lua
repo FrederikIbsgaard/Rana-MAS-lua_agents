@@ -43,17 +43,27 @@
 
 
 -- Import valid Rana lua libraries.
+Event = require "ranalib_event"
 Move = require "ranalib_movement"
 Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 Agent = require "ranalib_agent"
-local Stat = require "ranalib_statistic"
+Stat = require "ranalib_statistic"
+
+-- EventHandler
+function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
+	if eventDescription == "attack" then
+		--say("Prey: "..ID .." was attacked by Predator: "..sourceID .."")
+		Event.emit{targetID=sourceID, speed=343, description="killed prey"}
+		Agent.removeAgent(ID)
+		l_modifyMap(PositionX, PositionY, 255, 0, 0)
+	end
+end
 
 
 -- Initialization of the agent.
-
 function initializeAgent()
-	say("Agent #: " .. ID .. " has been initialized")
+	--say("Agent #: " .. ID .. " has been initialized")
 	--Moving = true
 	--DestinationX = 1
 	--DestinationY = 1
@@ -62,6 +72,9 @@ function initializeAgent()
 
 	GridMove = true
 end
+
+
+
 
 Steps = 0
 Moving = false

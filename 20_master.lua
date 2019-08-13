@@ -53,18 +53,17 @@ background_color = {0,0,0}
 prey_color = {0,255,0}
 predator_color = {0,0,255}
 
-amountC = {100, 1}
+preyPredator = {100, 10}
 
 function initializeAgent()
 
     --StepMultiple = 1000
-    Agent.changeColor{r=0, b=0, g=0}
     say("Master Agent#: " .. ID .. " has been initialized")
 
     Shared.storeTable("background_color", background_color)
     Shared.storeTable("prey_color", prey_color)
     Shared.storeTable("predator_color", predator_color)
-    Shared.storeTable("amountC", amountC)
+    Shared.storeTable("preyPredator", preyPredator)
     for i=0, ENV_WIDTH do
         for j=0, ENV_HEIGHT do
             Map.modifyColor(i,j, background_color)
@@ -76,19 +75,25 @@ function initializeAgent()
 
 	local ids = {}
 
-    for i = 1, amountC[1] do
+    for i = 1, preyPredator[1] do
         local ID = Agent.addAgent("20_prey.lua")
         table.insert(ids, ID)
         data_table[ID] = {call_amount = 0}
     end
+    say("All prey agents initialized, amount: ".. preyPredator[1])
 
-    for i=1, amountC[2] do
+    for i=1, preyPredator[2] do
         local ID = Agent.addAgent("20_predator.lua")
         table.insert(ids, ID)
         data_table[ID] = {call_amount = 0}
     end
+    say("All predator agents initialized, amount: ".. preyPredator[2])
 end
 
+function takeStep()
+	Agent.removeAgent(ID)
+    say("Master agent removed")
+end
 
 function cleanUp()
 	--say("Agent #: " .. ID .. " is done\n")

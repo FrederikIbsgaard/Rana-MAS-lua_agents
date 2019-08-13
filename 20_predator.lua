@@ -43,6 +43,7 @@
 
 
 -- Import valid Rana lua libraries.
+Event = require "ranalib_event"
 Move = require "ranalib_movement"
 Map = require "ranalib_map"
 Shared = require "ranalib_shared"
@@ -50,57 +51,82 @@ Agent = require "ranalib_agent"
 Stat = require "ranalib_statistic"
 Collision = require "ranalib_collision"
 
+local state
+local preyPredator
+local kills
+-- EventHandler
+function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
+	if eventDescription == "killed prey" then
+		kills = kills + 1
+	end
 
---
-_ids = Shared.getTable("amountC")
+end
 
 -- Initialization of the agent.
 function initializeAgent()
-	say("Agent #: " .. ID .. " has been initialized")
+	--say("Agent #: " .. ID .. " has been initialized")
 	--Moving = true
 	--DestinationX = 1
 	--DestinationY = 1
     Agent.changeColor{r=0, g=0, b=255}
+
+	-- init local parameters
+	state = 0
+	preyPredator = Shared.getTable("preyPredator")
+	kills = 0
+	--
 	GridMove = true
+	Moving = false
+	Speed = 6
 end
-
-Steps = 0
-Moving = false
-search_radius = 20
-
 
 function takeStep()
 
-
-	--local table = Map.radialMapColorScan(5	, 0, 255, 0)
-	--local table = Map.radialMapColorScan(5, 0, 255, 0)
-    local preyTable = findClosestPrey()
-	if preyTable ~= nil then
-		killPrey(preyTable.id)
-	end
-end
-
-
-function findClosestPrey()
-	--say(prey_color[1])
-    local table = Collision.radialCollisionScan(search_radius)
-	if table ~= nil then
-		for i=1, #table do
-			if table[i].id <= _ids[1]+1 then
-				Move.to({x=table[i].posX, y=table[i].posY})
-				return table[i]
-			end
+	if state == 0 then
+		move()
+		preyTable = _ScanMap(10)
+		if preyTable ~= nil then
+			state = 1
+			distanceToPrey = math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2))
 		end
 	end
-	move()
-	return nil
+	if state == 1 then
+		Move.to({x=preyTable.posX, y=preyTable.posY})
+		if math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2)) < 1 then
+			--Agent.removeAgent(stalked_prey.id)
+			Event.emit{targetID=preyTable.id, speed=343, description="attack"}
+		end
+		if math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2)) <= distanceToPrey/2 then
+			state = 0
+		end
+	end
+
 end
 
-function killPrey(id)
 
-    Agent.removeAgent(id)
-	say("Killed prey: ".. id)
+function _ScanMap(scanRadius)
 
+	local dist = 10000
+
+	local table = Collision.radialCollisionScan(scanRadius, PredatorX, PredatorY)
+	if table ~= nil then
+		--say(#table)
+		for i = 1, #table do
+			local r,g,b = l_checkMap(table.posX,table.posY)
+			if table[i].id <= preyPredator[1]+1 then -- target only preys
+				temp_dist = math.sqrt(math.pow((PositionX-table[i].posX),2) + math.pow((PositionY-table[i].posY),2))
+				if temp_dist < dist then
+					dist = temp_dist
+					targetPrey = table[i]
+				end
+			end
+			--say(table[i].id)
+			--say(temp_dist)
+		end
+		--say("targetPrey")
+		return targetPrey
+	end
+	return
 end
 
 
@@ -110,11 +136,10 @@ function move()
 
 	if not Moving then
 		Move.toRandom()
-		Speed = 3
 	end
 end
 
 
 function cleanUp()
-	--say("Agent #: " .. ID .. " is done\n")
+	say("Agent #: " .. ID .. " killed: " .. kills)
 end
