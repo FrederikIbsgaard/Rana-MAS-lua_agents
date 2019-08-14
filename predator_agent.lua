@@ -90,7 +90,6 @@ _ScanMap = function(scanRadius)
 			--say(temp_dist)
 		end
 		--say("targetPrey")
-		--say(targetPrey.id)
 		return targetPrey
 	end
 	return
