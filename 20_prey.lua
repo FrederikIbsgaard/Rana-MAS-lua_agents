@@ -50,13 +50,16 @@ Shared = require "ranalib_shared"
 Agent = require "ranalib_agent"
 Stat = require "ranalib_statistic"
 
+--
+local sp = 3
+
 -- EventHandler
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 	if eventDescription == "attack" then
 		--say("Prey: "..ID .." was attacked by Predator: "..sourceID .."")
 		Event.emit{targetID=sourceID, speed=343, description="killed prey"}
 		Agent.removeAgent(ID)
-		l_modifyMap(PositionX, PositionY, 255, 0, 0)
+		--l_modifyMap(PositionX, PositionY, 255, 0, 0)
 	end
 end
 
@@ -71,6 +74,8 @@ function initializeAgent()
     Agent.changeColor{r=0, g=255, b=0}
 
 	GridMove = true
+	GridMovement = true
+	Speed = sp
 end
 
 
@@ -83,18 +88,28 @@ function takeStep()
 	move()
 end
 
-
 function move()
 
-	if Stat.randomInteger(1,20000) == 1 then Moving = false end
+	if not standStill then
+		if Stat.randomInteger(1,200) == 1 then
+			Moving = false
+		end
 
-	if Stat.randomInteger(1,50000) == 1 then
-		Speed = 0
+		if Stat.randomInteger(1,500) == 1 then
+			Speed = 0
+			standStill = true
+			standStillCounter = 0
+		end
+	else
+		standStillCounter = standStillCounter + 1
+		if standStillCounter > 1000 then
+			standStill = false
+		end
 	end
 
 	if not Moving then
 		Move.toRandom()
-		Speed = 1
+		Speed = sp
 	end
 end
 

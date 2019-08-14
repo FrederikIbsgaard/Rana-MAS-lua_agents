@@ -53,7 +53,7 @@ background_color = {0,0,0}
 prey_color = {0,255,0}
 predator_color = {0,0,255}
 
-preyPredator = {100, 10}
+preyPredator = {50, 1}
 
 function initializeAgent()
 
@@ -88,6 +88,7 @@ function initializeAgent()
         data_table[ID] = {call_amount = 0}
     end
     say("All predator agents initialized, amount: ".. preyPredator[2])
+
 end
 
 function takeStep()
