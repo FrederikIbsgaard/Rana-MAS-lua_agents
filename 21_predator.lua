@@ -51,7 +51,7 @@ Agent = require "ranalib_agent"
 Stat = require "ranalib_statistic"
 Collision = require "ranalib_collision"
 
-
+-- Load torus modul to move and scan though egdes
 torusModul = require "torus_modul"
 --
 local state
@@ -59,7 +59,8 @@ local preyPredator
 local kills
 local sp
 local G
-local gotodest
+local goToDest
+local agentStates = {"moveRandom", "lookForPrey","stalkPrey"}
 
 -- EventHandler
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
@@ -71,55 +72,74 @@ end
 
 -- Initialization of the agent.
 function initializeAgent()
-	--say("Agent #: " .. ID .. " has been initialized")
-	--Moving = true
-	--DestinationX = 1
-	--DestinationY = 1
     Agent.changeColor{r=0, g=0, b=255}
 
 	-- init local parameters
-	state = 0
+	state = agentStates[1]
+	-- Change Agent color to the predator color determined in 21_master
 	local color = Shared.getTable("predator_color")
 	Agent.changeColor{r=color[1], g=color[2], b=color[3]}
+	-- Get the grid dim
 	local Grid = Shared.getTable("mapSize")
 	G = Grid[1]
+	-- The amount of preys and predators
 	preyPredator = Shared.getTable("preyPredator")
 	kills = 0
-	sp = 5
-	gotodest = {x=Stat.randomInteger(1,ENV_WIDTH),y=Stat.randomInteger(1,ENV_WIDTH)}
+	sp = 10
+
+	goToDest = {x=Stat.randomInteger(1,ENV_WIDTH),y=Stat.randomInteger(1,ENV_WIDTH)}
 	--
 	GridMove = true
 	GridMovement = true
 	Moving = false
 	Speed = sp
+	--Collision.updatePosition(1,50)
+
 end
 
 function takeStep()
-
-	if state == 0 then
+	if state == agentStates[1] then
+		-- running around scanning
 		if Stat.randomInteger(1,2000) == 1 then
-			gotodest.x = Stat.randomInteger(1,ENV_WIDTH)
-			gotodest.y = Stat.randomInteger(1,ENV_WIDTH)
+			goToDest.x = Stat.randomInteger(0,ENV_WIDTH)
+			goToDest.y = Stat.randomInteger(0,ENV_WIDTH)
 		end
-		torusModul.moveTorus(gotodest.x, gotodest.y, G)
+		state = agentStates[2]
+	end
+	if state == agentStates[2] then
 		preyTable = _ScanMap(10)
+
 		if preyTable ~= nil then
-			state = 1
-			distanceToPrey = math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2))
+			-- Prey found hunt!
+			state = agentStates[3]
+			distanceToPrey = torusModul.distanceToAgent(PositionX, PositionY, preyTable.posX, preyTable.posY)
+		else
+			state = agentStates[1]
 		end
 	end
-	if state == 1 then
-		--Move.to({x=preyTable.posX, y=preyTable.posY})
-		torusModul.moveTorus(preyTable.posX,preyTable.posY,G)
-		if math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2)) < 1 then
-			--Agent.removeAgent(stalked_prey.id)
+	if state == agentStates[3] then
+		--goToDest.x = preyTable.posX
+		--goToDest.y = preyTable.posY
+		--torusModul.moveTorus(preyTable.posX,preyTable.posY,G)
+		--if math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2)) < 1 then
+		if torusModul.distanceToAgent(PositionX, PositionY, preyTable.posX, preyTable.posY) < 1.1 then
 			Event.emit{targetID=preyTable.id, speed=343, description="attack"}
-		end
-		if math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2)) <= distanceToPrey/2 then
-			state = 0
+			state = agentStates[1]		
+		elseif torusModul.distanceToAgent(PositionX, PositionY, preyTable.posX, preyTable.posY) <= distanceToPrey/2 then
+			state = agentStates[2]
 		end
 	end
-	Move.to({x=DestinationX,y=DestinationY})
+	if not Moving then
+	--if false then
+		Speed = sp
+		-- Go though the egde if its shortere
+		if state == agentStates[3] then
+			torusModul.moveTorus(preyTable.posX, preyTable.posY, G)
+		else
+			torusModul.moveTorus(goToDest.x, goToDest.y, G)
+		end
+		Move.to({x=DestinationX,y=DestinationY})
+	end
 
 end
 
@@ -127,39 +147,22 @@ end
 function _ScanMap(scanRadius)
 
 	local dist = 10000
-
-	local table = Collision.radialCollisionScan(scanRadius, PredatorX, PredatorY)
-	--local table = squareSpiralTorusScanCollision(550)
-
+	-- scan for Agants using collision
+	local table = torusModul.squareSpiralTorusScanCollision(scanRadius,G, ID)
 	if table ~= nil then
-		--say(#table)
+		-- Go though the table to find the closes agent
 		for i = 1, #table do
-			local r,g,b = l_checkMap(table.posX,table.posY)
 			if table[i].id <= preyPredator[1]+1 then -- target only preys
-				temp_dist = math.sqrt(math.pow((PositionX-table[i].posX),2) + math.pow((PositionY-table[i].posY),2))
+				temp_dist = torusModul.distanceToAgent(PositionX, PositionY, table[i].posX, table[i].posY)
 				if temp_dist < dist then
 					dist = temp_dist
 					targetPrey = table[i]
 				end
 			end
-			--say(table[i].id)
-			--say(temp_dist)
 		end
-		--say("targetPrey")
 		return targetPrey
 	end
 	return
-end
-
-function move()
-
-	if Stat.randomInteger(1,20000) == 1 then Moving = false end
-
-	if not Moving then
-		Move.toRandom()
-
-		Speed = sp
-	end
 end
 
 function cleanUp()

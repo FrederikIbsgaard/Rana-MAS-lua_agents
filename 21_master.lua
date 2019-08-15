@@ -47,13 +47,13 @@ Stat = require "ranalib_statistic"
 Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 Draw = require "ranalib_draw"
-
+Collision = require "ranalib_collision"
 
 background_color = {0,0,0}
 prey_color = {0,255,0}
 predator_color = {0,0,255}
 
-preyPredator = {50, 1}
+preyPredator = {50,10}
 mapSize = {ENV_WIDTH,ENV_HEIGHT}
 function initializeAgent()
 
@@ -95,6 +95,7 @@ end
 
 function takeStep()
 	Agent.removeAgent(ID)
+
     say("Master agent removed")
 end
 

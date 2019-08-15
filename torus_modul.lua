@@ -70,6 +70,57 @@ function torus.squareSpiralTorusScanColor(dimension, color,G)
 	end
 end
 
+function torus.squareSpiralTorusScanCollision(scanDimension, G, id)
+    -- scanDimension is scan dimension
+    -- G grid size
+    -- id is the Agents own ID
+	local x = 0
+	local y = 0
+	local dx = 0
+	local dy = -1
+	local collisionTable = {}
+	local checkColor = {}
+
+
+	-- Spiral check starting from the Agent position and spiraling out
+	for i=1, (scanDimension+1)*(scanDimension+1) do
+		local checkX = PositionX + x
+		local checkY = PositionY + y
+
+		-- Check through walls
+		if checkX >= G then checkX = checkX - G end
+		if checkX < 0 then checkX = checkX + G end
+		if checkY >= G then checkY = checkY - G end
+		if checkY < 0 then checkY = checkY + G end
+
+        -- Check if position has an Agent
+        checkCol = l_checkPosition(checkX,checkY)
+        if checkCol[1] ~= nil then
+            if checkCol[1] ~= id  then
+                table.insert(collisionTable, {id=checkCol[1],posX=checkX, posY=checkY})
+            end
+
+        end
+
+		-- Caluculating next position
+		if x == y or (x < 0 and x == -y) or (x > 0 and x == 1-y) then
+			local temp = dx
+			dx = -dy
+			dy = temp
+		end
+
+		-- Next position
+		x = x+dx
+		y = y+dy
+	end
+
+	-- Returns
+	if #collisionTable > 0 then
+		return collisionTable
+	else
+		return nil
+	end
+end
 
 
 function torus.moveTorus(x,y,G)
@@ -104,17 +155,16 @@ function torus.moveTorus(x,y,G)
 	elseif destY >= G then
 		destY = 0
 	end
+    -- Moving the agent on the other side of the map
 	if destX == 0 or destX == G-1 then
 		Collision.updatePosition(destX,destY)
-
 	elseif destY == 0 or destY == G-1 then
 		Collision.updatePosition(destX,destY)
 	end
 	-- If no other agent is at the destination or the destination is the base
 	if (not Collision.checkCollision(destX,destY)) or (destX == basePosX and destY == basePosY)  then
-		-- Moving the Agent
-		--Collision.updatePosition(destX,destY)
-	-- If there is a collision
+		-- Do nothing
+	-- If there is a collision move the agent and change the des koordinates
 	else
 		-- If destination is on the same y
 		if destX ~= PositionX and destY == PositionY then
@@ -187,12 +237,28 @@ function torus.moveTorus(x,y,G)
 		end
 
 		-- Update position
-		--Collision.updatePosition(destX,destY)
+		Collision.updatePosition(destX,destY)
 
 	end
 
 	DestinationX = destX
 	DestinationY = destY
+
+end
+
+
+function torus.distanceToAgent(posX, posY, targetPosX, targetPosY)
+    -- Caluculating the distance to an other agent 
+    distanceToAgent = math.sqrt(math.pow((posX-targetPosX),2) + math.pow((posY-targetPosY),2))
+    if distanceToAgent > ENV_WIDTH/2 then
+        return distanceToAgent
+    else
+        temp = math.sqrt(math.pow((posX-(targetPosX-distanceToAgent)),2) + math.pow((posY-targetPosY-distanceToAgent),2))
+        return temp
+    end
+
+
+
 
 end
 
