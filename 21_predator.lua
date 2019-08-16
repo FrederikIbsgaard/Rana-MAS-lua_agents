@@ -61,11 +61,25 @@ local sp
 local G
 local goToDest
 local agentStates = {"moveRandom", "lookForPrey","stalkPrey"}
-
+preyTable = {id=0,posX=0,posY=0}
+local px
+local py
+local pid
 -- EventHandler
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
-	if eventDescription == "killed prey" then
-		kills = kills + 1
+	if sosourceID ~= ID then
+		if eventDescription == "killed prey" then
+			kills = kills + 1
+		elseif eventDescription == "found prey"  then
+			if torusModul.distanceToAgent(PositionX, PositionY, eventTable.posX, eventTable.posY) < 20 then
+				state = agentStates[3]
+				--preyTable = {id=eventTable.id,posX=eventTable.posX,posY=eventTable.posY}
+
+				 px = eventTable.posX
+				 py = eventTable.posX
+				 pid = eventTable.posX
+			end
+		end
 	end
 
 end
@@ -85,7 +99,7 @@ function initializeAgent()
 	-- The amount of preys and predators
 	preyPredator = Shared.getTable("preyPredator")
 	kills = 0
-	sp = 10
+	sp = 5
 
 	goToDest = {x=Stat.randomInteger(1,ENV_WIDTH),y=Stat.randomInteger(1,ENV_WIDTH)}
 	--
@@ -108,24 +122,30 @@ function takeStep()
 	end
 	if state == agentStates[2] then
 		preyTable = _ScanMap(10)
-
+		--Shared.storeTable("preyTable",preyTable)
 		if preyTable ~= nil then
 			-- Prey found hunt!
 			state = agentStates[3]
+			px = preyTable.posX
+			py = preyTable.posY
+			pid = preyTable.id
+			Event.emit{targetID=Predator, speed=80, description="found prey", table={posX=preyTable.posX,posY=preyTable.posY,id=preyTable.id}}
 			distanceToPrey = torusModul.distanceToAgent(PositionX, PositionY, preyTable.posX, preyTable.posY)
 		else
 			state = agentStates[1]
 		end
 	end
 	if state == agentStates[3] then
+		--tempT = Shared.getTable("preyTable")
 		--goToDest.x = preyTable.posX
 		--goToDest.y = preyTable.posY
 		--torusModul.moveTorus(preyTable.posX,preyTable.posY,G)
 		--if math.sqrt(math.pow((PositionX-preyTable.posX),2) + math.pow((PositionY-preyTable.posY),2)) < 1 then
-		if torusModul.distanceToAgent(PositionX, PositionY, preyTable.posX, preyTable.posY) < 1.1 then
-			Event.emit{targetID=preyTable.id, speed=343, description="attack"}
-			state = agentStates[1]		
-		elseif torusModul.distanceToAgent(PositionX, PositionY, preyTable.posX, preyTable.posY) <= distanceToPrey/2 then
+
+		if torusModul.distanceToAgent(PositionX, PositionY, px, py) < 1 then
+			Event.emit{targetID=pid, speed=343, description="attack"}
+			state = agentStates[1]
+		elseif torusModul.distanceToAgent(PositionX, PositionY, px, py) <= distanceToPrey/2 then
 			state = agentStates[2]
 		end
 	end
@@ -134,7 +154,7 @@ function takeStep()
 		Speed = sp
 		-- Go though the egde if its shortere
 		if state == agentStates[3] then
-			torusModul.moveTorus(preyTable.posX, preyTable.posY, G)
+			torusModul.moveTorus(px, py, G)
 		else
 			torusModul.moveTorus(goToDest.x, goToDest.y, G)
 		end
@@ -153,7 +173,7 @@ function _ScanMap(scanRadius)
 		-- Go though the table to find the closes agent
 		for i = 1, #table do
 			if table[i].id <= preyPredator[1]+1 then -- target only preys
-				temp_dist = torusModul.distanceToAgent(PositionX, PositionY, table[i].posX, table[i].posY)
+				temp_dist = torusModul.distanceToAgent(PositionX, PositionY, math.floor(table[i].posX), math.floor(table[i].posY))
 				if temp_dist < dist then
 					dist = temp_dist
 					targetPrey = table[i]

@@ -50,10 +50,12 @@ Draw = require "ranalib_draw"
 Collision = require "ranalib_collision"
 
 background_color = {0,0,0}
-prey_color = {0,255,0}
-predator_color = {0,0,255}
+prey_color = {0,125,125}
+predator_color = {255,0,0}
+food_color = {0,255,0}
 
-preyPredator = {50,10}
+preyPredator = {2,0}
+foodSources = 10
 mapSize = {ENV_WIDTH,ENV_HEIGHT}
 function initializeAgent()
 
@@ -63,6 +65,7 @@ function initializeAgent()
     Shared.storeTable("background_color", background_color)
     Shared.storeTable("prey_color", prey_color)
     Shared.storeTable("predator_color", predator_color)
+    Shared.storeTable("food_color", food_color)
     Shared.storeTable("preyPredator", preyPredator)
     Shared.storeTable("mapSize", mapSize)
 
@@ -89,6 +92,9 @@ function initializeAgent()
         table.insert(ids, ID)
         data_table[ID] = {call_amount = 0}
     end
+
+    
+
     say("All predator agents initialized, amount: ".. preyPredator[2])
 
 end

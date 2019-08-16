@@ -19,8 +19,8 @@ torusModul = require "torus_modul"
 local G
 local doScan = true
 local sp
-local standStill
 local goToDest
+local state
 
 -- EventHandler
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
@@ -37,7 +37,7 @@ function initializeAgent()
 
 	GridMovement = true	-- Visible is the collision grid
 	GridMove = true
-	say("Agent #: " .. ID .. " has been initialized")
+	--say("Agent #: " .. ID .. " has been initialized")
 
 	-- Change Agent color to the prey color determined in 21_master
 	local color = Shared.getTable("prey_color")
@@ -45,18 +45,18 @@ function initializeAgent()
 	-- Get the grid dim
 	local Grid = Shared.getTable("mapSize")
 	G = Grid[1]
-	standStill = false
 	goToDest = {x=Stat.randomInteger(1,ENV_WIDTH),y=Stat.randomInteger(1,ENV_WIDTH)}
-	sp = 3
+	sp = 5
 	doScan = true
 	Speed = sp
+	state = 0
 	--Collision.updatePosition(198,45)
 
 end
 
 
 function takeStep()
-	if not standStill then
+	if state == 0 then
 		-- Go to a random place on the map
 		if Stat.randomInteger(1,2000) == 1 then
 			goToDest.x = Stat.randomInteger(1,ENV_WIDTH)
@@ -68,22 +68,24 @@ function takeStep()
 			--Speed = 0
 			goToDest.x = PositionX
 			goToDest.y = PositionY
-			standStill = true
+			state = 1
 			standStillCounter = 0
 		end
-	else
+	elseif state == 1 then
 		-- the Agents stop for a fixed program cycles.
 		standStillCounter = standStillCounter + 1
 		if standStillCounter > 500 then
-			standStill = false
+			state = 0
 		end
+	elseif state == 2 then
+
 	end
 
 	if not Moving then
 		Speed = sp
 		-- Go though the egde if its shortere
-		torusModul.moveTorus(goToDest.x, goToDest.y, G)
-		--torusModul.moveTorus(100, 100, G)
+		--torusModul.moveTorus(goToDest.x, goToDest.y, G)
+		torusModul.moveTorus(100, 100, G)
 		Move.to({x=DestinationX,y=DestinationY})
 	end
 end
