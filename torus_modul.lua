@@ -123,7 +123,7 @@ function torus.squareSpiralTorusScanCollision(scanDimension, G, id)
 end
 
 
-function torus.moveTorus(x,y,G)
+function torus.moveTorus(x,y,basePosX,basePosX,G)
 
 	local destX = x
 	local destY = y
@@ -257,8 +257,10 @@ function torus.distanceToAgent(posX, posY, targetPosX, targetPosY)
 
 
 end
---[[
-function torus.moveTorus(x,y,G)
+
+function torus.moveTorusmove(x,y,basePosX,basePosX,G)
+    -- does not work
+    -- use with Move.to({x=,y=})
 
 	local destX = x
 	local destY = y
@@ -290,18 +292,16 @@ function torus.moveTorus(x,y,G)
 	elseif destY >= G then
 		destY = 0
 	end
-    -- Moving the agent on the other side of the map
-	if destX == 0 or destX == G-1 then
-		Collision.updatePosition(destX,destY)
-	elseif destY == 0 or destY == G-1 then
-		Collision.updatePosition(destX,destY)
-	end
-	-- If no other agent is at the destination or the destination is the base
-	if (not Collision.checkCollision(destX,destY)) or (destX == basePosX and destY == basePosY)  then
-		-- Do nothing
-	-- If there is a collision move the agent and change the des koordinates
-	else
-		-- If destination is on the same y
+
+    if destX == 0 or destX == G-1 then
+        Collision.updatePosition(destX,destY)
+    elseif destY == 0 or destY == G-1 then
+        Collision.updatePosition(destX,destY)
+    end
+
+	-- If there is a collision
+    if (not Collision.checkCollision(destX,destY)) or (not Collision.checkCollision(basePosX,basePosY)) then
+        -- If destination is on the same y
 		if destX ~= PositionX and destY == PositionY then
 			-- Change y with either -1 or 1
 			local randStep = randomWithStep(-1,1,2)
@@ -380,5 +380,5 @@ function torus.moveTorus(x,y,G)
 	DestinationY = destY
 
 end
---]]
+
 return torus
