@@ -55,12 +55,12 @@ function takeStep()
 	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
 end
 
-function mineOre(x, y)
+function mineOre()
 	if oreStorage < W then
-		local r,g,b = l_checkMap(x,y)
+		local r,g,b = l_checkMap(PositionX,PositionY)
 		local color = Shared.getTable("ore_color")
 		if r == color[1] and g == color[2] and b == color[3] then
-			l_modifyMap(x,y, 0, 0, 0)
+			l_modifyMap(PositionX,PositionY, 0, 0, 0)
 			oreStorage = oreStorage + 1
 		end
 	end
