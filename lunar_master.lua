@@ -29,13 +29,15 @@ T = 100
 -- max number of ore a miner can carry
 W = 1
 -- number of explores
-X = 1
+X = 0
 -- number of miners
 Y = 1
 
 -- VARIABLES
 background_color = {0,0,0}
-ore_color = {0,0,255}
+ore_color = {155,0,155}
+explorer_color = {0,255,0}
+miner_color = {0,0,255}
 
 function initializeAgent()
 
@@ -44,6 +46,9 @@ function initializeAgent()
     local parameters = {N=N, D=D, C=C, E=E, G=G, I=I, M=M, P=P, Q=Q, S=S, T=T, W=W, X=X, Y=Y}
     Shared.storeTable("background_color", background_color)
     Shared.storeTable("ore_color", ore_color)
+    Shared.storeTable("explorer_color", explorer_color)
+    Shared.storeTable("miner_color", miner_color)
+
     Shared.storeTable("parameters", parameters)
 
     for i=0, ENV_WIDTH do

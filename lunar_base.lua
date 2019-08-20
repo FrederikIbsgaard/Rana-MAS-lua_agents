@@ -27,11 +27,16 @@ Shared = require "ranalib_shared"
 torusModul = require "torus_modul"
 
 --
-
+local globallyUsedEnergy = 0
+local collectedOre = 0
 
 -- EventHandler
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
-
+  if eventDescription == "dockingRequest" then
+    globallyUsedEnergy = globallyUsedEnergy + eventTable.usedEnergy
+    collectedOre = collectedOre + eventTable.oreCount
+    Event.emit{targetID=sourceID, speed=343, description="dockingAccepted"}
+  end
 end
 
 function initializeAgent()
