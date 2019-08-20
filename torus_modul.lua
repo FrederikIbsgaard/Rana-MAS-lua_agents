@@ -245,16 +245,21 @@ end
 
 function torus.distanceToAgent(posX, posY, targetPosX, targetPosY)
     -- Caluculating the distance to an other agent
-    distanceToAgent = math.sqrt(math.pow((posX-targetPosX),2) + math.pow((posY-targetPosY),2))
-    if distanceToAgent > ENV_WIDTH/2 then
-        return distanceToAgent
+    local distX = math.abs(posX - targetPosX)
+    local distY = math.abs(posY - targetPosY)
+    local tempDist = ENV_WIDTH * 1.5
+
+    if distX > ENV_WIDTH/2 and distY > ENV_HEIGHT/2 then
+      tempDist = math.sqrt(math.pow((ENV_WIDTH-distX),2) + math.pow((ENV_HEIGHT-distY),2))
+    elseif distX > ENV_WIDTH then
+      tempDist = math.sqrt(math.pow((ENV_WIDTH-distX),2) + math.pow((distY),2))
+    elseif distY > ENV_HEIGHT then
+      tempDist = math.sqrt(math.pow((distX),2) + math.pow((ENV_HEIGHT-distY),2))
     else
-        temp = math.sqrt(math.pow((posX-(targetPosX-distanceToAgent)),2) + math.pow((posY-targetPosY-distanceToAgent),2))
-        return temp
+      tempDist = math.sqrt(math.pow((distX),2) + math.pow((distY),2))
     end
 
-
-
+    return tempDist
 
 end
 

@@ -47,12 +47,15 @@ function initializeAgent()
 	S = parameters.S -- memory size of robots
 	I = parameters.I -- fixed communication scope
 	Q = parameters.Q -- cost of movemnt
+	Agent.joinGroup(2) -- transporter
 end
 
 function takeStep()
-	local x = Stat.randomInteger(0,ENV_WIDTH)
-	local y = Stat.randomInteger(0,ENV_WIDTH)
-	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
+	if not Moving then
+		local x = Stat.randomInteger(0,ENV_WIDTH)
+		local y = Stat.randomInteger(0,ENV_WIDTH)
+		torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
+	end
 end
 
 function mineOre()
@@ -65,6 +68,8 @@ function mineOre()
 		end
 	end
 end
+
+function
 
 function cleanUp()
 	--say("Agent #: " .. ID .. " is done\n")
