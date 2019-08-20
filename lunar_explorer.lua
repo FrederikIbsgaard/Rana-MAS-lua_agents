@@ -25,79 +25,17 @@ Event = require "ranalib_event"
 Move = require "ranalib_movement"
 Shared = require "ranalib_shared"
 Agent = require "ranalib_agent"
+Collision = require "ranalib_collision"
 Map = require "ranalib_map" -- DELETE
 -- Load torus modul to move and scan though egdes
 torusModul = require "torus_modul"
 
 --
 local memory = {}
-local ore_color, destX, destY, group, returningHome, stepCounter, STATE
+local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState
 local energy, MaxEnergy, P, S, I, Q
 -- EventHandler
-function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
-	if sourceID ~= ID then
-		if torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
-			if eventDescription == "explore ping" and not(returningHome) then
-				--say(eventTable.dest.x)
-				if torusModul.distanceToAgent(destX, destY, eventTable.dest.x, eventTable.dest.y) <= 100 then
-					local x = Stat.randomInteger(0,ENV_WIDTH)
-					local y = Stat.randomInteger(0,ENV_WIDTH)
-					while torusModul.distanceToAgent(x, y, eventTable.dest.x, eventTable.dest.y) >= 100 do
-						x = Stat.randomInteger(0,ENV_WIDTH)
-						y = Stat.randomInteger(0,ENV_WIDTH)
-					end
 
-					destX = x
-					destY = y
-				end
-				--[[local dx = math.abs(sourceX - PositionX)
-				local dy = math.abs(sourceY - PositionY)
-				local x, y, sourceScanP
-				x= 0
-				y= 0
-				sourceScanP = eventTable.scanP
-				if PositionX > sourceX then
-					if PositionY > sourceY then
-						x = sourceX + sourceScanP/2
-						y = sourceY + sourceScanP/2
-					end
-					if PositionY <= sourceY then
-						x = sourceX + sourceScanP/2
-						y = sourceY - sourceScanP/2
-					elseif math.abs(PositionX - x) < math.abs(PositionY - y) then
-						destX = x + P
-						destY = PositionY
-					else
-						destX = PositionX
-						destY = y + P
-					end
-				elseif PositionX < sourceX then
-					if PositionY > sourceY then
-						x = sourceX - sourceScanP/2
-						y = sourceY + sourceScanP/2
-					elseif PositionY <= sourceY then
-						x = sourceX - sourceScanP/2
-						y = sourceY - sourceScanP/2
-					end
-
-					if math.abs(PositionX - x) < math.abs(PositionY - y) then
-						destX = x - P
-						destY = PositionY
-					else
-						destX = PositionX
-						destY = y - P
-					end
-				end
-				say("here")
-				--]]
-			end
-		end
-
-
-
-
-	end
-end
 
 function initializeAgent()
 	GridMove = true
@@ -114,17 +52,40 @@ function initializeAgent()
 	Agent.joinGroup(group)
 	stepCounter = P
  	STATE = "idle"
+	baseID = 2
+	taskOfferState == "emitOffer"
 	--local color =  --{0,255,0}local parameters = Shared.getTable("parameters")
 	ore_color = Shared.getTable("ore_color")
 	local color = Shared.getTable("explorer_color")
 	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
-	returningHome = false
 
-
-	say(memory[1].x .. " and " .. memory[1].y)
 end
 
+function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
+	if sourceID ~= ID then
+		if torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+			if eventDescription == "explore ping" then
+				--say(eventTable.dest.x)
+				if torusModul.distanceToAgent(destX, destY, eventTable.dest.x, eventTable.dest.y) <= 100 then
+					local x = Stat.randomInteger(0,ENV_WIDTH)
+					local y = Stat.randomInteger(0,ENV_WIDTH)
+					while torusModul.distanceToAgent(x, y, eventTable.dest.x, eventTable.dest.y) >= 100 do
+						x = Stat.randomInteger(0,ENV_WIDTH)
+						y = Stat.randomInteger(0,ENV_WIDTH)
+					end
 
+					destX = x
+					destY = y
+				end
+			elseif eventDescription == "taskResponse" then
+				local capacity = eventTable.capacity
+				local minDist = eventTable.minDist
+			elseif eventDescription == "dockingAccepted" then
+				energy = MaxEnergy
+			end
+		end
+	end
+end
 
 function takeStep()
 	if STATE == "idle" then
@@ -133,12 +94,15 @@ function takeStep()
 		STATE = "move"
 	elseif STATE == "move" then
 		moveTo(destX, destY)
-		if stepCounter >= 10 then
-			--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
+		if stepCounter >= P then
+			Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 			STATE = "scanForOre"
 		end
+		stepCounter = stepCounter + 1
 	elseif STATE == "scanForOre" then
 		newDest = _scanForOre()
+
+		--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 		if newDest ~= nil then
 			destX = newDest[1]
 			destY = newDest[2]
@@ -148,32 +112,69 @@ function takeStep()
 		end
 		stepCounter = 0
 		if #memory >= S then
-			STATE = "goHome"
-			--say("go home")
+			STATE = "moveToBase"
 		else
 			STATE = "move"
 		end
-	elseif STATE == "goHome" then
+	elseif STATE == "moveToBase" then
 		moveTo(memory[1].x, memory[1].y)
-		if PositionX == memory[1].x and PositionY == memory[1].y then
+		if atBase() then
 			while #memory > 1 do -- DELETE!
 				Map.modifyColor(memory[#memory].x, memory[#memory].y, Shared.getTable("background_color"))
 				table.remove(memory,#memory)
 			end
-			STATE = "idle"
+			STATE = "recharge"
+		end
+	elseif STATE == "recharge" then
+		if energy ~= MaxEnergy then
+			Event.emit{targetID=baseID, speed=343, description="dockingRequest", table={oreCount=0,usedEnergy=MaxEnergy-energy}}
+		elseif #memory ~= 1 then
+			STATE = "taskOffer"
+		else
+			destX = Stat.randomInteger(0,ENV_WIDTH)
+			destY = Stat.randomInteger(0,ENV_WIDTH)
+			STATE = "move"
+		end
+	elseif STATE == "taskOffer" then
+		if taskOfferState == "emitOffer" then
+			Event.emit{targetID=baseID, speed=343, description="taskOffer"}
+		elseif taskOfferState == "evaluateOffers" then
+
+		elseif taskOfferState == "emitTasks" then
+
+
+			taskOfferState = "emitOffer"
+			STATE = recharge
 		end
 	end
-
-	if energy == 0 then
-		--Agent.removeAgent(ID)
+	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "recharge" or STATE == "idle") then
+		STATE = "moveToBase"
 	end
-	say(STATE)
-	stepCounter = stepCounter + 1
+	if energy == 0 then
+		Agent.removeAgent(ID)
+		Map.modifyColor(PositionX, PositionY, {255,0,0})
+	end
+
 end
 
 function moveTo(x, y)
 	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
 	energy = energy - 1
+end
+
+function atBase()
+	if PositionX==memory[1].x and PositionY==memory[1].y then
+		return true
+	elseif distToBase() <= 1.1 then
+		Collision.updatePosition(memory[1].x,memory[1].y)
+		return true
+	else
+		return false
+	end
+end
+
+function distToBase()
+	return torusModul.distanceToAgent(PositionX, PositionY, memory[1].x, memory[1].y)
 end
 
 function _scanForOre()
@@ -210,3 +211,45 @@ end
 function cleanUp()
 	--say("Agent #: " .. ID .. " is done\n")
 end
+
+
+--[[local dx = math.abs(sourceX - PositionX)
+local dy = math.abs(sourceY - PositionY)
+local x, y, sourceScanP
+x= 0
+y= 0
+sourceScanP = eventTable.scanP
+if PositionX > sourceX then
+	if PositionY > sourceY then
+		x = sourceX + sourceScanP/2
+		y = sourceY + sourceScanP/2
+	end
+	if PositionY <= sourceY then
+		x = sourceX + sourceScanP/2
+		y = sourceY - sourceScanP/2
+	elseif math.abs(PositionX - x) < math.abs(PositionY - y) then
+		destX = x + P
+		destY = PositionY
+	else
+		destX = PositionX
+		destY = y + P
+	end
+elseif PositionX < sourceX then
+	if PositionY > sourceY then
+		x = sourceX - sourceScanP/2
+		y = sourceY + sourceScanP/2
+	elseif PositionY <= sourceY then
+		x = sourceX - sourceScanP/2
+		y = sourceY - sourceScanP/2
+	end
+
+	if math.abs(PositionX - x) < math.abs(PositionY - y) then
+		destX = x - P
+		destY = PositionY
+	else
+		destX = PositionX
+		destY = y - P
+	end
+end
+say("here")
+--]]
