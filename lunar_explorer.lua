@@ -53,7 +53,7 @@ function initializeAgent()
 	stepCounter = P
  	STATE = "idle"
 	baseID = 2
-	taskOfferState == "emitOffer"
+	taskOfferState = "emitOffer"
 	--local color =  --{0,255,0}local parameters = Shared.getTable("parameters")
 	ore_color = Shared.getTable("ore_color")
 	local color = Shared.getTable("explorer_color")
