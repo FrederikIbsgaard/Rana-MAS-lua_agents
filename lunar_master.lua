@@ -25,9 +25,9 @@ Q = 1
 -- memory size of robots
 S = 10
 -- Max number of cycles
-T = 100
+T = 1000000
 -- max number of ore a miner can carry
-W = 1
+W = 10
 -- number of explores
 X = 1
 -- number of miners

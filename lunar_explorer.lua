@@ -26,7 +26,7 @@ Move = require "ranalib_movement"
 Shared = require "ranalib_shared"
 Agent = require "ranalib_agent"
 Collision = require "ranalib_collision"
-Map = require "ranalib_map" -- DELETE
+--Map = require "ranalib_map" -- DELETE
 -- Load torus modul to move and scan though egdes
 torusModul = require "torus_modul"
 
@@ -34,6 +34,8 @@ torusModul = require "torus_modul"
 local memory = {}
 local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState
 local energy, MaxEnergy, P, S, I, Q
+
+local agentColor = "green" --DELETE
 -- EventHandler
 
 
@@ -80,6 +82,17 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 			elseif eventDescription == "taskResponse" then
 				local capacity = eventTable.capacity
 				local minDist = eventTable.minDist
+
+				local objectiveList = {}
+				for i=2, #memory do
+					table.insert(objectiveList, memory[i])
+				end
+				if eventTable.capacity ~= 0 then
+					Event.emit{targetID=sourceID, speed=5000, description="taskObjective", table={ores=objectiveList}}
+					while #memory > 1 do
+						memory [#memory] = nil
+					end
+				end
 			elseif eventDescription == "dockingAccepted" then
 				energy = MaxEnergy
 			end
@@ -111,6 +124,7 @@ function takeStep()
 			destY = Stat.randomInteger(0,ENV_WIDTH)
 		end
 		stepCounter = 0
+
 		if #memory >= S then
 			STATE = "moveToBase"
 		else
@@ -119,10 +133,11 @@ function takeStep()
 	elseif STATE == "moveToBase" then
 		moveTo(memory[1].x, memory[1].y)
 		if atBase() then
-			while #memory > 1 do -- DELETE!
-				Map.modifyColor(memory[#memory].x, memory[#memory].y, Shared.getTable("background_color"))
-				table.remove(memory,#memory)
-			end
+			--while #memory > 1 do -- DELETE!
+			--	Map.modifyColor(memory[#memory].x, memory[#memory].y, Shared.getTable("background_color"))
+			--	table.remove(memory,#memory)
+			--end
+			Event.emit{speed=5000, description="taskOffer"}
 			STATE = "recharge"
 		end
 	elseif STATE == "recharge" then
@@ -162,8 +177,8 @@ function moveTo(x, y)
 	energy = energy - 1
 end
 
-function atBase()
-	if PositionX==memory[1].x and PositionY==memory[1].y then
+function atBase() -- CLEAN THIS UP! MAKE THE DROP ZONE LARGER TO AVOID STUCK AGENTS
+	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
 		return true
 	elseif distToBase() <= 1.1 then
 		Collision.updatePosition(memory[1].x,memory[1].y)
@@ -178,6 +193,15 @@ function distToBase()
 end
 
 function _scanForOre()
+
+	if agentColor == "green" then -- DELETE THIS IS TO SEE WHEN IT SCANS
+		Agent.changeColor({r=255, g=0, b=0})
+		agentColor = "red"
+	elseif agentColor == "red" then
+		Agent.changeColor({r=0, g=255, b=0})
+		agentColor = "green"
+	end
+
 	local scanDim = P
 	local oreTable = torusModul.squareSpiralTorusScanColor(P, ore_color, ENV_WIDTH)
 	local orePicked = 0
@@ -190,20 +214,18 @@ function _scanForOre()
 				table.insert(memory, {x=oreTable[orePicked+1].posX, y=oreTable[orePicked+1].posY})
 				orePicked = orePicked + 1
 			end
-
 		end
 		if orePicked > 0 and orePicked ~= #oreTable then
 			local oreCount = 0
 			for i=orePicked, #oreTable do
 				x = x + oreTable[i].posX
-				y = y + oreTable[i].posX
+				y = y + oreTable[i].posY
 				oreCount = oreCount + 1
 			end
 			x = x/oreCount
 			y = y/oreCount
 			return {x, y}
 		end
-
 	end
 	return nil
 end

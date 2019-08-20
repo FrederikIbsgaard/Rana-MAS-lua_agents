@@ -73,8 +73,10 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
 	elseif eventDescription == "taskObjective" then
 		ores = eventTable.ores
-		for i=1, #ores do
-			table.insert(memory, {x=ores[i].x, y=ores[i].y})
+		if #memory-1 + #ores <= S then
+			for i=1, #ores do
+				table.insert(memory, {x=ores[i].x, y=ores[i].y})
+			end
 		end
 	end
 end
@@ -106,7 +108,7 @@ function takeStep()
 
 	elseif STATE == "pickUpOre" then
 		mineOre()
-		if not oreStorage == W and #memory > 1 then
+		if oreStorage < W and #memory > 1 then
 			STATE = "moveToOre"
 		elseif oreStorage == W or #memory == 1 then
 			STATE = "moveToBase"
@@ -156,7 +158,7 @@ function atOre()
 end
 
 function atBase()
-	return PositionX==memory[1].x and PositionY==memory[1].y
+	return (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1)
 end
 
 function atPos(x, y)
