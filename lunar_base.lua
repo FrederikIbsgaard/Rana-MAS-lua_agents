@@ -51,4 +51,6 @@ end
 
 function cleanUp()
 	--say("Agent #: " .. ID .. " is done\n")
+  say("Number of collected Ore: " .. collectedOre)
+  say("Total Energy Consumption: " .. globallyUsedEnergy)
 end

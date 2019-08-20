@@ -53,7 +53,8 @@ function initializeAgent()
 	Agent.joinGroup(group) -- transporter
 	baseID = 2
 
-	Agent.changeColor(Shared.getTable("miner_color"))
+	local color = Shared.getTable("miner_color")
+	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
 	--Collision.updatePosition(100, 100)
 end
 
@@ -61,7 +62,21 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
   if eventDescription == "dockingAccepted" then
     oreStorage = 0
 		energy = MaxEnergy
-  end
+
+	elseif eventDescription == "taskOffer" then
+		minDist = 0
+		if #memory > 1 then
+			idx = findClosestOreIndex()
+			minDistance = torusModul.distanceToAgent(PositionX, PositionY, memory[idx].x, memory[idx].y)
+		end
+		Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=(W-#memory+1), minDist=minDistance}}
+
+	elseif eventDescription == "taskObjective" then
+		ores = eventTable.ores
+		for i=1, #ores do
+			table.insert(memory, {x=ores[i].x, y=ores[i].y})
+		end
+	end
 end
 
 function takeStep()
@@ -72,16 +87,20 @@ function takeStep()
 		end
 
 	elseif STATE == "moveToOre" then
-		if not Moving then
-			local closestIndex = findClosestOreIndex()
-			torusModul.moveTorus(memory[closestIndex].x, memory[closestIndex].y, PositionX, PositionY , ENV_WIDTH)
-		elseif atOre() then
-			table.remove(memory, closestIndex)
-			STATE = "pickUpOre"
-		elseif not atOre() then
-			table.remove(memory, closestIndex)
-			if #memory == 1 then
-				STATE = "moveToBase"
+		local closestIndex = findClosestOreIndex()
+		local oreX = memory[closestIndex].x
+		local oreY = memory[closestIndex].y
+
+		moveTo(oreX, oreY)
+		if atPos(oreX, oreY) then
+			if atOre() then
+				table.remove(memory, closestIndex)
+				STATE = "pickUpOre"
+			elseif not atOre() then
+				table.remove(memory, closestIndex)
+				if #memory == 1 then
+					STATE = "moveToBase"
+				end
 			end
 		end
 
@@ -94,9 +113,9 @@ function takeStep()
 		end
 
 	elseif STATE == "moveToBase" then
-		if not Moving then
-			torusModul.moveTorus(memory[1].x, memory[1].y , PositionX, PositionY , ENV_WIDTH)
-		elseif atBase() then
+		if not atBase() then
+			moveTo(memory[1].x, memory[1].y)
+		else
 			deloadAndRefill()
 			STATE = "idle"
 		end
@@ -120,7 +139,7 @@ function findClosestOreIndex()
 		local tempDist = torusModul.distanceToAgent(PositionX, PositionY, memory[i].x, memory[i].y)
 		if tempDist < dist then
 			dist = tempDist
-			closes = i
+			closest = i
 		end
 	end
 
@@ -137,11 +156,20 @@ function atOre()
 end
 
 function atBase()
-	return PositionX=memory[1].x and PositionY=memory[1].y
+	return PositionX==memory[1].x and PositionY==memory[1].y
+end
+
+function atPos(x, y)
+	return PositionX==x and PositionY==y
 end
 
 function deloadAndRefill()
-	Event.emit{targetID=baseID, speed=343, description="dockingRequest", table={oreCount=oreStorage, usedEnergy=MaxEnergy-energy}}
+	Event.emit{targetID=baseID, speed=5000, description="dockingRequest", table={oreCount=oreStorage, usedEnergy=MaxEnergy-energy}}
+end
+
+function moveTo(x,y)
+	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
+	energy = energy -1
 end
 
 function cleanUp()

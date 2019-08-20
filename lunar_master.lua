@@ -11,7 +11,7 @@ D = 0.05
 -- base capacity of ore
 C = math.floor(D/N-D)
 -- energi for robots [units]
-E = 100
+E = 100000
 -- grid size
 G = ENV_WIDTH
 -- fixed communication scope
@@ -29,7 +29,7 @@ T = 100
 -- max number of ore a miner can carry
 W = 1
 -- number of explores
-X = 0
+X = 1
 -- number of miners
 Y = 1
 
@@ -37,7 +37,7 @@ Y = 1
 background_color = {0,0,0}
 ore_color = {155,0,155}
 explorer_color = {0,255,0}
-miner_color = {0,0,255}
+miner_color = {0,255,255}
 
 function initializeAgent()
 
