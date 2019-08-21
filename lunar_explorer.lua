@@ -32,8 +32,8 @@ torusModul = require "torus_modul"
 
 --
 local memory = {}
-local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState
-local energy, MaxEnergy, P, S, I, Q
+local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState, color
+local energy, MaxEnergy, scanDim, P, S, I, Q
 
 local agentColor = "green" --DELETE
 -- EventHandler
@@ -58,7 +58,7 @@ function initializeAgent()
 	taskOfferState = "emitOffer"
 	--local color =  --{0,255,0}local parameters = Shared.getTable("parameters")
 	ore_color = Shared.getTable("ore_color")
-	local color = Shared.getTable("explorer_color")
+	color = Shared.getTable("explorer_color")
 	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
 
 end
@@ -86,6 +86,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 				local objectiveList = {}
 				for i=2, #memory do
 					table.insert(objectiveList, memory[i])
+					table.remove(memory,i)
 				end
 				if eventTable.capacity ~= 0 then
 					Event.emit{targetID=sourceID, speed=5000, description="taskObjective", table={ores=objectiveList}}
@@ -101,6 +102,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
+	--say(STATE)
 	if STATE == "idle" then
 		destX = Stat.randomInteger(0,ENV_WIDTH)
 		destY = Stat.randomInteger(0,ENV_WIDTH)
@@ -108,7 +110,7 @@ function takeStep()
 	elseif STATE == "move" then
 		moveTo(destX, destY)
 		if stepCounter >= P then
-			Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
+			--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 			STATE = "scanForOre"
 		end
 		stepCounter = stepCounter + 1
@@ -137,7 +139,7 @@ function takeStep()
 			--	Map.modifyColor(memory[#memory].x, memory[#memory].y, Shared.getTable("background_color"))
 			--	table.remove(memory,#memory)
 			--end
-			Event.emit{speed=5000, description="taskOffer"}
+
 			STATE = "recharge"
 		end
 	elseif STATE == "recharge" then
@@ -152,14 +154,17 @@ function takeStep()
 		end
 	elseif STATE == "taskOffer" then
 		if taskOfferState == "emitOffer" then
-			Event.emit{targetID=baseID, speed=343, description="taskOffer"}
+			Event.emit{speed=5000, description="taskOffer"}
+			if #memory == 1 then
+				STATE = "recharge"
+			end
 		elseif taskOfferState == "evaluateOffers" then
 
 		elseif taskOfferState == "emitTasks" then
 
 
 			taskOfferState = "emitOffer"
-			STATE = recharge
+			STATE = "recharge"
 		end
 	end
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "recharge" or STATE == "idle") then
@@ -178,6 +183,16 @@ function moveTo(x, y)
 end
 
 function atBase() -- CLEAN THIS UP! MAKE THE DROP ZONE LARGER TO AVOID STUCK AGENTS
+
+	if distToBase() <= 5 then
+		Collision.updatePosition(memory[1].x,memory[1].y)
+		return true
+	else
+		return false
+	end
+
+
+	--[[
 	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
 		return true
 	elseif distToBase() <= 1.1 then
@@ -185,7 +200,7 @@ function atBase() -- CLEAN THIS UP! MAKE THE DROP ZONE LARGER TO AVOID STUCK AGE
 		return true
 	else
 		return false
-	end
+	end--]]
 end
 
 function distToBase()
