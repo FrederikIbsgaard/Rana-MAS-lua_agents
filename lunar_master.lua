@@ -11,7 +11,7 @@ D = 0.05
 -- base capacity of ore
 C = math.floor(D/N-D)
 -- energi for robots [units]
-E = 100000
+E = 1000
 -- grid size
 G = ENV_WIDTH
 -- fixed communication scope
@@ -27,7 +27,7 @@ S = 10
 -- Max number of cycles
 T = 1000000
 -- max number of ore a miner can carry
-W = 10
+W = 20
 -- number of explores
 X = 1
 -- number of miners
