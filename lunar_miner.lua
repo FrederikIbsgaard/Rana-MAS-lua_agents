@@ -35,6 +35,8 @@ local memory = {}
 local group, oreStorage, MaxEnergy, energy, W, P, S, I, Q, ore_color
 local STATE = "idle"
 local baseID
+local LATCHED_STATE = "idle"
+local stepCounter
 
 function initializeAgent()
 	GridMove = true
@@ -63,21 +65,26 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     oreStorage = 0
 		energy = MaxEnergy
 
-	elseif eventDescription == "taskOffer" then
-		minDist = 0
+	elseif eventDescription == "taskOffer" and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+		minDistance = 0
 		if #memory > 1 then
 			idx = findClosestOreIndex()
 			minDistance = torusModul.distanceToAgent(PositionX, PositionY, memory[idx].x, memory[idx].y)
 		end
-		Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=(W-#memory+1), minDist=minDistance}}
+		Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=(W-oreStorage), minDist=minDistance}}
+		say("miner: " .. ID .. " response to: " .. sourceID)
+		LATCHED_STATE = STATE
+		stepCounter = 0
+		STATE = "waitForObjective"
 
 	elseif eventDescription == "taskObjective" then
 		ores = eventTable.ores
-		if #memory-1 + #ores <= S then
+		if #memory + #ores <= S then
 			for i=1, #ores do
 				table.insert(memory, {x=ores[i].x, y=ores[i].y})
 			end
 		end
+		STATE = LATCHED_STATE
 	end
 end
 
@@ -89,9 +96,15 @@ function takeStep()
 		end
 
 	elseif STATE == "moveToOre" then
-		local closestIndex = findClosestOreIndex()
-		local oreX = memory[closestIndex].x
-		local oreY = memory[closestIndex].y
+		--local closestIndex
+		--local oreX
+		--local oreY
+
+		if closestIndex == nil then
+			closestIndex = findClosestOreIndex()
+			oreX = memory[closestIndex].x
+			oreY = memory[closestIndex].y
+		end
 
 		moveTo(oreX, oreY)
 		if atPos(oreX, oreY) then
@@ -104,6 +117,7 @@ function takeStep()
 					STATE = "moveToBase"
 				end
 			end
+			closestIndex = nil
 		end
 
 	elseif STATE == "pickUpOre" then
@@ -120,6 +134,12 @@ function takeStep()
 		else
 			deloadAndRefill()
 			STATE = "idle"
+		end
+
+	elseif STATE == "waitForObjective" then
+		stepCounter = stepCounter + 1
+		if stepCounter == 20 then
+			STATE = LATCHED_STATE
 		end
 	end
 
@@ -158,7 +178,13 @@ function atOre()
 end
 
 function atBase()
-	return (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1)
+	--return (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1)
+	if distToBase() <= 5 then
+		Collision.updatePosition(memory[1].x,memory[1].y)
+		return true
+	else
+		return false
+	end
 end
 
 function atPos(x, y)
@@ -169,7 +195,16 @@ function deloadAndRefill()
 	Event.emit{targetID=baseID, speed=5000, description="dockingRequest", table={oreCount=oreStorage, usedEnergy=MaxEnergy-energy}}
 end
 
+function colorGround() --NOT WORKING ATM
+	local color = Map.checkColor(PositionX,PositionY)
+	local newC = color[2] + 10
+	if newC < 255 then
+		l_modifyMap(PositionX,PositionY, color[1], newC, color[3])
+	end
+end
+
 function moveTo(x,y)
+	colorGround()
 	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
 	energy = energy -1
 end
