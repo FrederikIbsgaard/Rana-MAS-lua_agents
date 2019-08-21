@@ -89,9 +89,11 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 					table.remove(memory,i)
 				end
 				if eventTable.capacity ~= 0 then
-					Event.emit{targetID=sourceID, speed=5000, description="taskObjective", table={ores=objectiveList}}
+					Event.emit{targetID=sourceID, speed=0, description="taskObjective", table={ores=objectiveList}}
+					energy = energy -1
 					while #memory > 1 do
 						memory [#memory] = nil
+						--table.remove(memory, )
 					end
 				end
 			elseif eventDescription == "dockingAccepted" then
@@ -107,8 +109,16 @@ function takeStep()
 		destX = Stat.randomInteger(0,ENV_WIDTH)
 		destY = Stat.randomInteger(0,ENV_WIDTH)
 		STATE = "move"
+		stepCounter = P
 	elseif STATE == "move" then
 		moveTo(destX, destY)
+
+		if math.abs(destX-PositionX) <= 1.1 and math.abs(destY-PositionY) <= 1.1 then
+			destX = Stat.randomInteger(0,ENV_WIDTH)
+			destY = Stat.randomInteger(0,ENV_WIDTH)
+
+		end
+		--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 		if stepCounter >= P then
 			--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 			STATE = "scanForOre"
@@ -132,29 +142,30 @@ function takeStep()
 		else
 			STATE = "move"
 		end
+		--STATE = "32"
 	elseif STATE == "moveToBase" then
-		moveTo(memory[1].x, memory[1].y)
+		--moveTo(memory[1].x, memory[1].y)
+		destX = memory[1].x
+		destY = memory[1].y
+		moveTo(destX, destY)
 		if atBase() then
-			--while #memory > 1 do -- DELETE!
-			--	Map.modifyColor(memory[#memory].x, memory[#memory].y, Shared.getTable("background_color"))
-			--	table.remove(memory,#memory)
-			--end
-
 			STATE = "recharge"
 		end
 	elseif STATE == "recharge" then
 		if energy ~= MaxEnergy then
-			Event.emit{targetID=baseID, speed=343, description="dockingRequest", table={oreCount=0,usedEnergy=MaxEnergy-energy}}
+			Event.emit{targetID=baseID, speed=0, description="dockingRequest", table={oreCount=0,usedEnergy=MaxEnergy-energy}}
+			energy = energy -1
 		elseif #memory ~= 1 then
 			STATE = "taskOffer"
 		else
-			destX = Stat.randomInteger(0,ENV_WIDTH)
-			destY = Stat.randomInteger(0,ENV_WIDTH)
-			STATE = "move"
+			STATE = "scanForOre"
+			--destX = Stat.randomInteger(0,ENV_WIDTH)
+			--destY = Stat.randomInteger(0,ENV_WIDTH)
+
 		end
 	elseif STATE == "taskOffer" then
 		if taskOfferState == "emitOffer" then
-			Event.emit{speed=5000, description="taskOffer"}
+			Event.emit{speed=0, description="taskOffer"}
 			if #memory == 1 then
 				STATE = "recharge"
 			end
@@ -172,35 +183,34 @@ function takeStep()
 	end
 	if energy == 0 then
 		Agent.removeAgent(ID)
-		Map.modifyColor(PositionX, PositionY, {255,0,0})
+		Map.modifyColor(PositionX, PositionY, {255,255,255})
 	end
 
 end
 
 function moveTo(x, y)
 	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
+	colorGround()
 	energy = energy - 1
+end
+function colorGround() --NOT WORKING ATM
+	local color = Map.checkColor(PositionX,PositionY)
+	local newR = color[1] + 10
+	if newR < 255 then
+		l_modifyMap(PositionX,PositionY, newR, 0, 0)
+	end
 end
 
 function atBase() -- CLEAN THIS UP! MAKE THE DROP ZONE LARGER TO AVOID STUCK AGENTS
-
-	if distToBase() <= 5 then
+	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
+		--Collision.updatePosition(memory[1].x,memory[1].y)
+		return true
+	elseif distToBase() <= 2 then
 		Collision.updatePosition(memory[1].x,memory[1].y)
 		return true
 	else
 		return false
 	end
-
-
-	--[[
-	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
-		return true
-	elseif distToBase() <= 1.1 then
-		Collision.updatePosition(memory[1].x,memory[1].y)
-		return true
-	else
-		return false
-	end--]]
 end
 
 function distToBase()
@@ -219,28 +229,26 @@ function _scanForOre()
 
 	local scanDim = P
 	local oreTable = torusModul.squareSpiralTorusScanColor(P, ore_color, ENV_WIDTH)
-	local orePicked = 0
+	energy = energy - P
 	local x = 0
 	local y = 0
-
 	if oreTable ~= nil then
 		for i=1, #oreTable do
 			if #memory ~= S then
-				table.insert(memory, {x=oreTable[orePicked+1].posX, y=oreTable[orePicked+1].posY})
-				orePicked = orePicked + 1
+				table.insert(memory, {x=oreTable[i].posX, y=oreTable[i].posY})
 			end
 		end
-		if orePicked > 0 and orePicked ~= #oreTable then
-			local oreCount = 0
-			for i=orePicked, #oreTable do
-				x = x + oreTable[i].posX
-				y = y + oreTable[i].posY
-				oreCount = oreCount + 1
-			end
-			x = x/oreCount
-			y = y/oreCount
-			return {x, y}
+		local oreCount = #oreTable
+		for i=1, #oreTable do
+			x = x + oreTable[i].posX
+			y = y + oreTable[i].posY
+			--oreCount = oreCount + 1
 		end
+		x = x/oreCount
+		y = y/oreCount
+		return {x, y}
+
+		--end
 	end
 	return nil
 end
