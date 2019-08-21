@@ -66,12 +66,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 	    oreStorage = 0
 			energy = MaxEnergy
 
-		elseif eventDescription == "taskOffer" and STATE ~= "waitForObjective" and #memory ~= W then
-			minDistance = 0
-			--if #memory > 1 then
-			--	idx = findClosestOreIndex()
-			--	minDistance = torusModul.distanceToAgent(PositionX, PositionY, memory[idx].x, memory[idx].y)
-			--end
+		elseif eventDescription == "taskOffer" and STATE ~= "waitForObjective" and #memory ~= S then
 			Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=S-#memory}}--(W-oreStorage)}}--, minDist=minDistance}}
 			say("miner: " .. ID .. " response to offer from: " .. sourceID .. " Free memory: " .. (S-#memory))
 			LATCHED_STATE = STATE
@@ -80,7 +75,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
 		elseif eventDescription == "taskObjective" and STATE == "waitForObjective" then
 			ores = eventTable.ores
-			say("miner: " .. ID .. " objective response from: " .. sourceID .. " objective count: " .. #ores)
+			say("miner: " .. ID .. " objective response from: " .. sourceID .. " objective dropped: " .. #ores-(S-#memory))
 			local i = 1
 			while #memory < S do
 				table.insert(memory, {x=ores[i].x, y=ores[i].y})
