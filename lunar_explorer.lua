@@ -32,8 +32,10 @@ torusModul = require "torus_modul"
 
 --
 local memory = {}
+local transporterTable = {}
 local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState, color
 local energy, MaxEnergy, scanDim, P, S, I, Q
+local targetMiner = nil
 
 local agentColor = "green" --DELETE
 -- EventHandler
@@ -80,22 +82,9 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 					destY = y
 				end
 			elseif eventDescription == "taskResponse" then
-				local capacity = eventTable.capacity
-				local minDist = eventTable.minDist
 
-				local objectiveList = {}
-				for i=2, #memory do
-					table.insert(objectiveList, memory[i])
-					table.remove(memory,i)
-				end
-				if eventTable.capacity ~= 0 then
-					Event.emit{targetID=sourceID, speed=0, description="taskObjective", table={ores=objectiveList}}
-					energy = energy -1
-					while #memory > 1 do
-						memory [#memory] = nil
-						--table.remove(memory, )
-					end
-				end
+				table.insert(transporterTable, {ID=sourceID, capacity=eventTable.capacity, minDist=eventTable.minDist})
+
 			elseif eventDescription == "dockingAccepted" then
 				energy = MaxEnergy
 			end
@@ -165,14 +154,53 @@ function takeStep()
 		end
 	elseif STATE == "taskOffer" then
 		if taskOfferState == "emitOffer" then
-			Event.emit{speed=0, description="taskOffer"}
-			if #memory == 1 then
-				STATE = "recharge"
-			end
+			Event.emit{speed=5000, description="taskOffer"}
+			--if #memory == 1 then
+			--	STATE = "recharge"
+			--end
+			waitStepCounter = 0
+			taskOfferState = "evaluateOffers"
 		elseif taskOfferState == "evaluateOffers" then
+			waitStepCounter = waitStepCounter + 1
+			if waitStepCounter == 20 then
+				local potentialMiners = {}
+				for i=1, #transporterTable do
+					if transporterTable[i].capacity >= #memory-1 then
+						table.insert(potentialMiners, i)
+					end
+				end
 
+				local dist = 5000
+				local tempDist = dist
+				for j=1, #potentialMiners do
+					i = potentialMiners[j]
+					tempDist = transporterTable[i].minDist
+					if tempDist < dist then
+						dist = tempDist
+						targetMiner = transporterTable[i].ID
+					end
+				end
+				while #transporterTable > 0 do
+					transporterTable [#transporterTable] = nil
+				end
+				while #potentialMiners > 0 do
+					potentialMiners [#potentialMiners] = nil
+				end
+
+				if targetMiner ~= nil then
+					taskOfferState = "emitTasks"
+				elseif targetMiner == nil then
+					-- FUCKING UGLY CODE, IF NOT TRANSPORTER DUMP MEMORY AND MOVE ON
+					while #memory > 1 do
+						memory [#memory] = nil
+					end
+					taskOfferState = "emitOffer"
+					STATE = "recharge"
+				end
+			end
 		elseif taskOfferState == "emitTasks" then
-
+			emitObjective(targetMiner)
+			targetMiner = nil
 
 			taskOfferState = "emitOffer"
 			STATE = "recharge"
@@ -251,6 +279,18 @@ function _scanForOre()
 		--end
 	end
 	return nil
+end
+
+function emitObjective(minerID)
+	local objectiveList = {}
+	for i=2, #memory do
+		table.insert(objectiveList, memory[i])
+		table.remove(memory,i)
+	end
+	Event.emit{targetID=minerID, speed=5000, description="taskObjective", table={ores=objectiveList}}
+	while #memory > 1 do
+		memory [#memory] = nil
+	end
 end
 
 function cleanUp()
