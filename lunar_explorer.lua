@@ -83,7 +83,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 				end
 			elseif eventDescription == "taskResponse" then
 
-				table.insert(transporterTable, {ID=sourceID, capacity=eventTable.capacity, minDist=eventTable.minDist})
+				table.insert(transporterTable, {ID=sourceID, capacity=eventTable.capacity})--, minDist=eventTable.minDist})
 
 			elseif eventDescription == "dockingAccepted" then
 				energy = MaxEnergy
@@ -162,29 +162,20 @@ function takeStep()
 			taskOfferState = "evaluateOffers"
 		elseif taskOfferState == "evaluateOffers" then
 			waitStepCounter = waitStepCounter + 1
-			if waitStepCounter == 20 then
-				local potentialMiners = {}
+			if #transporterTable > 0 then
+				local highestCap = 0
+				local cap = 0
 				for i=1, #transporterTable do
-					if transporterTable[i].capacity >= #memory-1 then
-						table.insert(potentialMiners, i)
-					end
-				end
-
-				local dist = 5000
-				local tempDist = dist
-				for j=1, #potentialMiners do
-					i = potentialMiners[j]
-					tempDist = transporterTable[i].minDist
-					if tempDist < dist then
-						dist = tempDist
+					cap = transporterTable[i].capacity
+					if cap > highestCap then
+						highestCap = cap
 						targetMiner = transporterTable[i].ID
 					end
 				end
+
+
 				while #transporterTable > 0 do
 					transporterTable [#transporterTable] = nil
-				end
-				while #potentialMiners > 0 do
-					potentialMiners [#potentialMiners] = nil
 				end
 
 				if targetMiner ~= nil then
@@ -197,6 +188,14 @@ function takeStep()
 					taskOfferState = "emitOffer"
 					STATE = "recharge"
 				end
+			elseif waitStepCounter == 100 and #transporterTable == 0 then
+				while #memory > 1 do
+					memory [#memory] = nil
+				end
+				taskOfferState = "emitOffer"
+				STATE = "recharge"
+			elseif math.fmod(waitStepCounter,2) == 0 and #transporterTable == 0 then -- QUICKFIX
+				Event.emit{speed=5000, description="taskOffer"}
 			end
 		elseif taskOfferState == "emitTasks" then
 			emitObjective(targetMiner)
@@ -209,7 +208,7 @@ function takeStep()
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "recharge" or STATE == "idle") then
 		STATE = "moveToBase"
 	end
-	if energy == 0 then
+	if energy <= 0 then
 		Agent.removeAgent(ID)
 		Map.modifyColor(PositionX, PositionY, {255,255,255})
 	end
@@ -218,7 +217,7 @@ end
 
 function moveTo(x, y)
 	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
-	colorGround()
+	--colorGround()
 	energy = energy - 1
 end
 function colorGround() --NOT WORKING ATM
@@ -285,7 +284,6 @@ function emitObjective(minerID)
 	local objectiveList = {}
 	for i=2, #memory do
 		table.insert(objectiveList, memory[i])
-		table.remove(memory,i)
 	end
 	Event.emit{targetID=minerID, speed=5000, description="taskObjective", table={ores=objectiveList}}
 	while #memory > 1 do

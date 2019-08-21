@@ -35,7 +35,7 @@ local memory = {}
 local group, oreStorage, MaxEnergy, energy, W, P, S, I, Q, ore_color
 local STATE = "idle"
 local baseID
-local LATCHED_STATE = "idle"
+local LATCHED_STATE = "NOSTATE"
 local stepCounter
 
 function initializeAgent()
@@ -61,34 +61,38 @@ function initializeAgent()
 end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
-  if eventDescription == "dockingAccepted" then
-    oreStorage = 0
-		energy = MaxEnergy
+	if sourceID ~= ID and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+	  if eventDescription == "dockingAccepted" then
+	    oreStorage = 0
+			energy = MaxEnergy
 
-	elseif eventDescription == "taskOffer" and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
-		minDistance = 0
-		if #memory > 1 then
-			idx = findClosestOreIndex()
-			minDistance = torusModul.distanceToAgent(PositionX, PositionY, memory[idx].x, memory[idx].y)
-		end
-		Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=(W-oreStorage), minDist=minDistance}}
-		say("miner: " .. ID .. " response to: " .. sourceID)
-		LATCHED_STATE = STATE
-		stepCounter = 0
-		STATE = "waitForObjective"
+		elseif eventDescription == "taskOffer" and STATE ~= "waitForObjective" and #memory ~= W then
+			minDistance = 0
+			--if #memory > 1 then
+			--	idx = findClosestOreIndex()
+			--	minDistance = torusModul.distanceToAgent(PositionX, PositionY, memory[idx].x, memory[idx].y)
+			--end
+			Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=S-#memory}}--(W-oreStorage)}}--, minDist=minDistance}}
+			say("miner: " .. ID .. " response to offer from: " .. sourceID .. " Free memory: " .. (S-#memory))
+			LATCHED_STATE = STATE
+			stepCounter = 0
+			STATE = "waitForObjective"
 
-	elseif eventDescription == "taskObjective" then
-		ores = eventTable.ores
-		if #memory + #ores <= S then
-			for i=1, #ores do
+		elseif eventDescription == "taskObjective" and STATE == "waitForObjective" then
+			ores = eventTable.ores
+			say("miner: " .. ID .. " objective response from: " .. sourceID .. " objective count: " .. #ores)
+			local i = 1
+			while #memory < S do
 				table.insert(memory, {x=ores[i].x, y=ores[i].y})
+				i = i+1
 			end
+			STATE = LATCHED_STATE
 		end
-		STATE = LATCHED_STATE
 	end
 end
 
 function takeStep()
+	--say("ID: " .. ID .. " STATE: " .. STATE .. " Latched State: " .. LATCHED_STATE)
 
 	if STATE == "idle" then
 		if #memory > 1  and energy == MaxEnergy then
@@ -138,13 +142,17 @@ function takeStep()
 
 	elseif STATE == "waitForObjective" then
 		stepCounter = stepCounter + 1
-		if stepCounter == 20 then
+		if stepCounter >= 3 then
 			STATE = LATCHED_STATE
 		end
 	end
 
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "pickUpOre" or STATE == "idle") then
 		STATE = "moveToBase"
+	end
+	if energy <= 0 then
+		Agent.removeAgent(ID)
+		Map.modifyColor(PositionX, PositionY, {255,255,255})
 	end
 end
 
@@ -204,7 +212,7 @@ function colorGround() --NOT WORKING ATM
 end
 
 function moveTo(x,y)
-	colorGround()
+	--colorGround()
 	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
 	energy = energy -1
 end

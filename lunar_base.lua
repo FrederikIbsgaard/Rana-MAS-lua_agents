@@ -35,7 +35,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
   if eventDescription == "dockingRequest" then
     globallyUsedEnergy = globallyUsedEnergy + eventTable.usedEnergy
     collectedOre = collectedOre + eventTable.oreCount
-    Event.emit{targetID=sourceID, speed=343, description="dockingAccepted"}
+    Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted"}
   end
 end
 
