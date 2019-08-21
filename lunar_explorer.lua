@@ -92,6 +92,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 					Event.emit{targetID=sourceID, speed=5000, description="taskObjective", table={ores=objectiveList}}
 					while #memory > 1 do
 						memory [#memory] = nil
+						--table.remove(memory, )
 					end
 				end
 			elseif eventDescription == "dockingAccepted" then
@@ -107,8 +108,14 @@ function takeStep()
 		destX = Stat.randomInteger(0,ENV_WIDTH)
 		destY = Stat.randomInteger(0,ENV_WIDTH)
 		STATE = "move"
+		stepCounter = P
 	elseif STATE == "move" then
 		moveTo(destX, destY)
+		if math.abs(destX-PositionX) <= 1.1 and math.abs(destY-PositionY) <= 1.1 then
+			destX = Stat.randomInteger(0,ENV_WIDTH)
+			destY = Stat.randomInteger(0,ENV_WIDTH)
+
+		end
 		if stepCounter >= P then
 			--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 			STATE = "scanForOre"
@@ -121,9 +128,12 @@ function takeStep()
 		if newDest ~= nil then
 			destX = newDest[1]
 			destY = newDest[2]
-		else
-			destX = Stat.randomInteger(0,ENV_WIDTH)
-			destY = Stat.randomInteger(0,ENV_WIDTH)
+			--say("memory " .. #memory)
+		--else
+			--destX = Stat.randomInteger(0,ENV_WIDTH)
+			--destY = Stat.randomInteger(0,ENV_WIDTH)
+			--say("new pos x: " .. destX .. " y: " .. destY)
+			--moveTo(destX,destY)
 		end
 		stepCounter = 0
 
@@ -132,14 +142,13 @@ function takeStep()
 		else
 			STATE = "move"
 		end
+		--STATE = "32"
 	elseif STATE == "moveToBase" then
-		moveTo(memory[1].x, memory[1].y)
+		--moveTo(memory[1].x, memory[1].y)
+		destX = memory[1].x
+		destY = memory[1].y
+		moveTo(destX, destY)
 		if atBase() then
-			--while #memory > 1 do -- DELETE!
-			--	Map.modifyColor(memory[#memory].x, memory[#memory].y, Shared.getTable("background_color"))
-			--	table.remove(memory,#memory)
-			--end
-
 			STATE = "recharge"
 		end
 	elseif STATE == "recharge" then
@@ -148,9 +157,10 @@ function takeStep()
 		elseif #memory ~= 1 then
 			STATE = "taskOffer"
 		else
-			destX = Stat.randomInteger(0,ENV_WIDTH)
-			destY = Stat.randomInteger(0,ENV_WIDTH)
 			STATE = "move"
+			--destX = Stat.randomInteger(0,ENV_WIDTH)
+			--destY = Stat.randomInteger(0,ENV_WIDTH)
+
 		end
 	elseif STATE == "taskOffer" then
 		if taskOfferState == "emitOffer" then
@@ -172,7 +182,7 @@ function takeStep()
 	end
 	if energy == 0 then
 		Agent.removeAgent(ID)
-		Map.modifyColor(PositionX, PositionY, {255,0,0})
+		Map.modifyColor(PositionX, PositionY, {255,255,255})
 	end
 
 end
@@ -183,24 +193,15 @@ function moveTo(x, y)
 end
 
 function atBase() -- CLEAN THIS UP! MAKE THE DROP ZONE LARGER TO AVOID STUCK AGENTS
-
-	if distToBase() <= 5 then
+	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
+		--Collision.updatePosition(memory[1].x,memory[1].y)
+		return true
+	elseif distToBase() <= 2 then
 		Collision.updatePosition(memory[1].x,memory[1].y)
 		return true
 	else
 		return false
 	end
-
-
-	--[[
-	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
-		return true
-	elseif distToBase() <= 1.1 then
-		Collision.updatePosition(memory[1].x,memory[1].y)
-		return true
-	else
-		return false
-	end--]]
 end
 
 function distToBase()
@@ -219,28 +220,43 @@ function _scanForOre()
 
 	local scanDim = P
 	local oreTable = torusModul.squareSpiralTorusScanColor(P, ore_color, ENV_WIDTH)
-	local orePicked = 0
 	local x = 0
 	local y = 0
 
 	if oreTable ~= nil then
 		for i=1, #oreTable do
 			if #memory ~= S then
-				table.insert(memory, {x=oreTable[orePicked+1].posX, y=oreTable[orePicked+1].posY})
-				orePicked = orePicked + 1
+				for j=1,#memory do
+					if j > #oreTable  then
+						break
+					end
+					if memory[j].x ~= oreTable[j].posX then
+						if memory[j].y ~= oreTable[j].posY then
+							table.insert(memory, {x=oreTable[i].posX, y=oreTable[i].posY})
+							break
+						end
+					end
+				end
 			end
 		end
-		if orePicked > 0 and orePicked ~= #oreTable then
-			local oreCount = 0
-			for i=orePicked, #oreTable do
-				x = x + oreTable[i].posX
-				y = y + oreTable[i].posY
-				oreCount = oreCount + 1
-			end
-			x = x/oreCount
-			y = y/oreCount
-			return {x, y}
+		--if orePicked > 0 and orePicked ~= #oreTable then
+		local oreCount = #oreTable
+		for i=1, #oreTable do
+			x = x + oreTable[i].posX
+			y = y + oreTable[i].posY
+			--oreCount = oreCount + 1
 		end
+		x = x/oreCount
+		y = y/oreCount
+
+
+		--[[local maxxy = math.max(x, y)
+		local newx = (midX - PositionX )/midX
+		local newy = (midY - PositionY)/midY
+		newx = PositionX + newx
+		newy = PositionY + newy--]]
+		return {x, y}
+		--end
 	end
 	return nil
 end
