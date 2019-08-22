@@ -33,11 +33,12 @@ torusModul = require "torus_modul"
 --
 local memory = {}
 local transporterTable = {}
-local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState, color
+local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState, color, complete
 local energy, MaxEnergy, scanDim, P, S, I, Q
 local targetMiner = nil
-
+local STATE = "NOSTATE"
 local agentColor = "green" --DELETE
+local stepCounterTwo = 0
 -- EventHandler
 
 
@@ -52,12 +53,9 @@ function initializeAgent()
 	I = parameters.I -- fixed communication scope
 	Q = parameters.Q -- cost of movemnt
 
-	group = 1
-	Agent.joinGroup(group)
 	stepCounter = P
- 	STATE = "idle"
-	baseID = 2
 	taskOfferState = "emitOffer"
+	complete = false
 	--local color =  --{0,255,0}local parameters = Shared.getTable("parameters")
 	ore_color = Shared.getTable("ore_color")
 	color = Shared.getTable("explorer_color")
@@ -66,9 +64,16 @@ function initializeAgent()
 end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
-	if sourceID ~= ID then
-		if torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
-			if eventDescription == "explore ping" then
+	if eventDescription == "AcceptGroup" and STATE == "NOSTATE" and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= 1 then
+		group = eventTable.group
+		Agent.joinGroup(group)
+		baseID = group
+		say("Explore #" ..ID .. " assigned to " .. group)
+		STATE = "idle"
+	end
+	if sourceID ~= ID and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+		if  eventTable.group == group then
+			if eventDescription == "explore ping"  and eventTable.group == group then
 				--say(eventTable.dest.x)
 				if torusModul.distanceToAgent(destX, destY, eventTable.dest.x, eventTable.dest.y) <= 100 then
 					local x = Stat.randomInteger(0,ENV_WIDTH)
@@ -82,18 +87,69 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 					destY = y
 				end
 			elseif eventDescription == "taskResponse" then
-
 				table.insert(transporterTable, {ID=sourceID, capacity=eventTable.capacity})--, minDist=eventTable.minDist})
 
 			elseif eventDescription == "dockingAccepted" then
 				energy = MaxEnergy
+
+			elseif eventDescription == "dockingRefused" then
+					energy = MaxEnergy
+					STATE = "findNewBase"
+
+			--elseif eventDescription == "allOreCollected" and sourceID == group  then
+			--	completed()
+			--end
+		--elseif eventDescription == "findNearestBase"  then
+		--	STATE = "findNearestBase"
+		--	complete = true
+		--elseif eventDescription == "baseHere" and sourceID ~= group and STATE == "findNearestBase" and #memory == 1 then
+		--	STATE = "foundBase"
+		--	table.insert(memory, {x=sourceX,y=sourceY,id=sourceID})
+		--	say("Base Found")
+		--elseif eventDescription == "changeBaseTo" and sourceID == group then
+		--	while #memory > 0 do
+		--		memory[#memory] = nil
+		--	end
+		--	table.insert(memory, {x=eventTable.x,y=eventTable.y})
+		--	Agent.joinGroup(eventTable.id)
+		--	baseID = group
+		--	say("Explore #" ..ID .. " assigned to " .. group)
+				--STATE = "idle"
+			end
+		elseif eventTable.group ~= group then
+			if eventDescription == "joinBase" then
+					group = eventTable.group
+					local newBase = eventTable.basePos
+					while #memory > 0 do
+						memory [#memory] = nil
+					end
+					table.insert(memory, {x=newBase.x, y=newBase.y})
+					--Event.emit{targetID=baseID, speed=5000, description="dockingRequest", table={oreCount=oreStorage, usedEnergy=MaxEnergy-energy,group=group}}
+					STATE = "moveToBase"
+
+						-- color change to see base swap
+					local red = 0
+					local blue = 0
+					if group == 2 then
+						red = 255
+						blue = 0
+					elseif group == 23 then
+						blue = 255
+						red = 0
+					end
+					Agent.changeColor({r=255, g=0, b=0})
+
+
+
+			elseif eventDescription == "lookingForNewBase" then
+				Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group,basePos={x=memory[1].x, y=memory[1].y}}}
 			end
 		end
 	end
 end
 
 function takeStep()
-	--say(STATE)
+	say("EXPLORER: " .. STATE)
 	if STATE == "idle" then
 		destX = Stat.randomInteger(0,ENV_WIDTH)
 		destY = Stat.randomInteger(0,ENV_WIDTH)
@@ -133,28 +189,28 @@ function takeStep()
 		end
 		--STATE = "32"
 	elseif STATE == "moveToBase" then
-		--moveTo(memory[1].x, memory[1].y)
-		destX = memory[1].x
-		destY = memory[1].y
-		moveTo(destX, destY)
-		if atBase() then
+		if (not atBase()) then
+			destX = memory[1].x
+			destY = memory[1].y
+			moveTo(destX, destY)
+		else
 			STATE = "recharge"
 		end
 	elseif STATE == "recharge" then
-		if energy ~= MaxEnergy then
-			Event.emit{targetID=baseID, speed=0, description="dockingRequest", table={oreCount=0,usedEnergy=MaxEnergy-energy}}
-			energy = energy -1
-		elseif #memory ~= 1 then
-			STATE = "taskOffer"
-		else
-			STATE = "scanForOre"
-			--destX = Stat.randomInteger(0,ENV_WIDTH)
-			--destY = Stat.randomInteger(0,ENV_WIDTH)
+			say(energy .. " E M " .. #memory)
+			if energy ~= MaxEnergy then
+				Event.emit{targetID=baseID, speed=0, description="dockingRequest", table={oreCount=0,usedEnergy=MaxEnergy-energy,group=group}}
+				--energy = energy -1
+			elseif #memory ~= 1 then
+				STATE = "taskOffer"
+			else
+				STATE = "scanForOre"
+			end
 
-		end
 	elseif STATE == "taskOffer" then
+		--say("TASK STATE: " .. taskOfferState)
 		if taskOfferState == "emitOffer" then
-			Event.emit{speed=5000, description="taskOffer"}
+			Event.emit{speed=5000, description="taskOffer", table={group=group}}
 			--if #memory == 1 then
 			--	STATE = "recharge"
 			--end
@@ -162,7 +218,7 @@ function takeStep()
 			taskOfferState = "evaluateOffers"
 		elseif taskOfferState == "evaluateOffers" then
 			waitStepCounter = waitStepCounter + 1
-			if #transporterTable > 0 then
+			if #transporterTable > 0 and waitStepCounter >= 2 then
 				local highestCap = 0
 				local cap = 0
 				for i=1, #transporterTable do
@@ -180,13 +236,13 @@ function takeStep()
 
 				if targetMiner ~= nil then
 					taskOfferState = "emitTasks"
-				elseif targetMiner == nil then
-					-- FUCKING UGLY CODE, IF NOT TRANSPORTER DUMP MEMORY AND MOVE ON
-					while #memory > 1 do
-						memory [#memory] = nil
-					end
-					taskOfferState = "emitOffer"
-					STATE = "recharge"
+				--elseif targetMiner == nil then
+				--	-- FUCKING UGLY CODE, IF NO TRANSPORTER DUMP MEMORY AND MOVE ON
+				--	while #memory > 1 do
+				--		memory [#memory] = nil
+				--	end
+				--	taskOfferState = "emitOffer"
+				--	STATE = "recharge"
 				end
 			elseif waitStepCounter == 100 and #transporterTable == 0 then
 				while #memory > 1 do
@@ -194,8 +250,8 @@ function takeStep()
 				end
 				taskOfferState = "emitOffer"
 				STATE = "recharge"
-			elseif math.fmod(waitStepCounter,2) == 0 and #transporterTable == 0 then -- QUICKFIX
-				Event.emit{speed=5000, description="taskOffer"}
+			elseif (waitStepCounter == 20 or waitStepCounter == 40) and #transporterTable == 0 then -- QUICKFIX
+				Event.emit{speed=5000, description="taskOffer", table={group=group}}
 			end
 		elseif taskOfferState == "emitTasks" then
 			emitObjective(targetMiner)
@@ -204,6 +260,46 @@ function takeStep()
 			taskOfferState = "emitOffer"
 			STATE = "recharge"
 		end
+
+	elseif STATE == "findNewBase" then
+		moveTo(destX, destY)
+		if math.abs(destX-PositionX) <= 1.1 and math.abs(destY-PositionY) <= 1.1 then
+			destX = Stat.randomInteger(0,ENV_WIDTH)
+			destY = Stat.randomInteger(0,ENV_WIDTH)
+		end
+		if stepCounterTwo >= P then--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
+			STATE = "callForAgents"
+		end
+		stepCounterTwo = stepCounterTwo + 1
+	elseif STATE == "callForAgents" then
+		Event.emit{speed=5000, description="lookingForNewBase", table={group=group}}
+		STATE = "findNewBase"
+		stepCounterTwo = 0
+
+	--elseif STATE == "findNearestBase" then
+	--	if #memory > 1 then
+	--		while #memory > 1 do
+	--			memory[#memory] = nil
+	--		end
+	--		destX = memory[1].x
+	--		destY = memory[1].y
+	--	else
+	--		moveTo(destX, destY)
+	--		if math.abs(destX-PositionX) <= 1.1 and math.abs(destY-PositionY) <= 1.1 then
+	--			destX = Stat.randomInteger(0,ENV_WIDTH)
+	--			destY = Stat.randomInteger(0,ENV_WIDTH)
+	--
+	--		end
+	--	end
+	--elseif STATE == "foundBase" then
+	--	if (not atBase()) then
+	--		destX = memory[1].x
+	--		destY = memory[1].y
+	--		moveTo(destX, destY)
+	--	else
+	--		STATE = "recharge"
+	--		Event.emit{targetID=group,destination="changebase",table={id=memory[2].id,x=memory[2].x,y=memory[2].y,group=group}}
+	--	end
 	end
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "recharge" or STATE == "idle") then
 		STATE = "moveToBase"
@@ -246,13 +342,13 @@ end
 
 function _scanForOre()
 
-	if agentColor == "green" then -- DELETE THIS IS TO SEE WHEN IT SCANS
-		Agent.changeColor({r=255, g=0, b=0})
-		agentColor = "red"
-	elseif agentColor == "red" then
-		Agent.changeColor({r=0, g=255, b=0})
-		agentColor = "green"
-	end
+	--if agentColor == "green" then -- DELETE THIS IS TO SEE WHEN IT SCANS
+	--	Agent.changeColor({r=255, g=0, b=0})
+	--	agentColor = "red"
+	--elseif agentColor == "red" then
+	--	Agent.changeColor({r=0, g=255, b=0})
+	--	agentColor = "green"
+	--end
 
 	local scanDim = P
 	local oreTable = torusModul.squareSpiralTorusScanColor(P, ore_color, ENV_WIDTH)
@@ -285,10 +381,15 @@ function emitObjective(minerID)
 	for i=2, #memory do
 		table.insert(objectiveList, memory[i])
 	end
-	Event.emit{targetID=minerID, speed=5000, description="taskObjective", table={ores=objectiveList}}
+	Event.emit{targetID=minerID, speed=5000, description="taskObjective", table={ores=objectiveList,group=group}}
 	while #memory > 1 do
 		memory [#memory] = nil
 	end
+end
+
+function completed()
+	STATE = "moveToBase"
+	complete = true
 end
 
 function cleanUp()

@@ -5,19 +5,19 @@ Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 
 -- amount of bases
-N = 1
+N = 2
 -- density of ore [procentage]
 D = 0.05
 -- base capacity of ore
-C = math.floor(D/N-D)
+C = 30
 -- energi for robots [units]
-E = 1000000
+E = 200000
 -- grid size
 G = ENV_WIDTH
 -- fixed communication scope
 I = 20
 -- coordination mode, cooperative = 1 or competitive 0
-M = 0
+M = 1
 -- initial perception scope
 P = 10
 -- cost of motion
@@ -25,13 +25,13 @@ Q = 1
 -- memory size of robots
 S = 10
 -- Max number of cycles
-T = 1000000
+T = 100000
 -- max number of ore a miner can carry
 W = 20
 -- number of explores
 X = 10
 -- number of miners
-Y = 5
+Y = 10
 
 -- VARIABLES
 background_color = {0,0,0}
@@ -89,11 +89,22 @@ function initializeAgent()
                 data_table[ID] = {call_amount = 0}
                 table.insert(baseCordinates, {x,y})
                 placed = true
+                for i=1,X do
+                    local ID = Agent.addAgent("lunar_explorer.lua",x,y)
+                    table.insert(ids, ID)
+                    data_table[ID] = {call_amount = 0}
+                end
+                -- gave each base miners
+                for i=1,Y do
+                    local ID = Agent.addAgent("lunar_miner.lua",x,y)
+                    table.insert(ids, ID)
+                    data_table[ID] = {call_amount = 0}
+                end
             end
         end
     end
 
-    for i=1, N do
+    --[[for i=1, N do
         x = baseCordinates[i][1]
         y = baseCordinates[i][2]
         -- give each base explores
@@ -108,7 +119,7 @@ function initializeAgent()
             table.insert(ids, ID)
             data_table[ID] = {call_amount = 0}
         end
-    end
+    end--]]
 
 
 

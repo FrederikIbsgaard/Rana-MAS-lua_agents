@@ -33,10 +33,13 @@ torusModul = require "torus_modul"
 --
 local memory = {}
 local group, oreStorage, MaxEnergy, energy, W, P, S, I, Q, ore_color
-local STATE = "idle"
+local STATE = "NOSTATE"
 local baseID
 local LATCHED_STATE = "NOSTATE"
-local stepCounter
+local stepCounter, complete
+local stepCounterTwo = 0
+local destX = Stat.randomInteger(0,ENV_WIDTH)
+local destY = Stat.randomInteger(0,ENV_WIDTH)
 
 function initializeAgent()
 	GridMove = true
@@ -51,37 +54,88 @@ function initializeAgent()
 	S = parameters.S -- memory size of robots
 	I = parameters.I -- fixed communication scope
 	Q = parameters.Q -- cost of movemnt
-	group = 2
-	Agent.joinGroup(group) -- transporter
-	baseID = 2
-
+	 -- transporter
+	complete = false
 	local color = Shared.getTable("miner_color")
 	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
 	--Collision.updatePosition(100, 100)
 end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
-	if sourceID ~= ID and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
-	  if eventDescription == "dockingAccepted" then
-	    oreStorage = 0
+	if eventDescription == "AcceptGroup" and STATE == "NOSTATE" and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= 1 then
+		group = eventTable.group
+		Agent.joinGroup(group)
+		baseID = group
+		say("Miner #" ..ID .. " assigned to " .. group)
+		STATE = "idle"
+	end
+	if sourceID ~= ID and eventTable.group == group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+		if eventDescription == "dockingAccepted" then
+			oreStorage = 0
 			energy = MaxEnergy
 
+		elseif eventDescription == "dockingRefused" then
+				energy = MaxEnergy
+				STATE = "findNewBase"
+
 		elseif eventDescription == "taskOffer" and STATE ~= "waitForObjective" and #memory ~= S then
-			Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=S-#memory}}--(W-oreStorage)}}--, minDist=minDistance}}
-			say("miner: " .. ID .. " response to offer from: " .. sourceID .. " Free memory: " .. (S-#memory))
+			Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=S-#memory, group=group}}--(W-oreStorage)}}--, minDist=minDistance}}
+			--say("miner: " .. ID .. " response to offer from: " .. sourceID .. " Free memory: " .. (S-#memory))
 			LATCHED_STATE = STATE
 			stepCounter = 0
 			STATE = "waitForObjective"
 
 		elseif eventDescription == "taskObjective" and STATE == "waitForObjective" then
 			ores = eventTable.ores
-			say("miner: " .. ID .. " objective response from: " .. sourceID .. " objective dropped: " .. #ores-(S-#memory))
+			--say("miner: " .. ID .. " objective response from: " .. sourceID .. " objective dropped: " .. #ores-(S-#memory))
 			local i = 1
 			while #memory < S do
+				if i > #ores then
+					break
+				end
 				table.insert(memory, {x=ores[i].x, y=ores[i].y})
 				i = i+1
 			end
+
 			STATE = LATCHED_STATE
+
+		--elseif eventDescription == "allOreCollected" and sourceID == group then
+		--	completed()
+		--elseif eventDescription == "changeBaseTo" and sourceID == group then
+		--	while #memory > 0 do
+		--		memory[#memory] = nil
+		--	end
+		--	table.insert(memory, {x=eventTable.x,y=eventTable.y})
+		--	Agent.joinGroup(eventTable.id)
+		--	baseID = group
+		--	say("Explore #" ..ID .. " assigned to " .. group)
+		--	STATE = "idle"
+
+		end
+	elseif sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+		if eventDescription == "joinBase" then
+			group = eventTable.group
+			memory[1].x = eventTable.basePos.x
+			memory[1].y = eventTable.basePos.y
+			--deloadAndRefill()
+			STATE = "moveToBase"
+
+			-- color change to see base swap
+			local red = 0
+			local blue = 0
+			if group == 2 then
+				red = 255
+				blue = 0
+			elseif group == 23 then
+				blue = 255
+				red = 0
+			end
+			Agent.changeColor({r=0, g=0, b=255})
+
+
+
+		elseif eventDescription == "lookingForNewBase" then
+			Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group,basePos={x=memory[1].x, y=memory[1].y}}}
 		end
 	end
 end
@@ -137,9 +191,24 @@ function takeStep()
 
 	elseif STATE == "waitForObjective" then
 		stepCounter = stepCounter + 1
-		if stepCounter >= 3 then
+		if stepCounter >= 4 then
 			STATE = LATCHED_STATE
 		end
+
+	elseif STATE == "findNewBase" then
+		moveTo(destX, destY)
+		if math.abs(destX-PositionX) <= 1.1 and math.abs(destY-PositionY) <= 1.1 then
+			destX = Stat.randomInteger(0,ENV_WIDTH)
+			destY = Stat.randomInteger(0,ENV_WIDTH)
+		end
+		if stepCounterTwo >= P then--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
+			STATE = "callForAgents"
+		end
+		stepCounterTwo = stepCounterTwo + 1
+	elseif STATE == "callForAgents" then
+		Event.emit{speed=5000, description="lookingForNewBase", table={group=group}}
+		STATE = "findNewBase"
+		stepCounterTwo = 0
 	end
 
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "pickUpOre" or STATE == "idle") then
@@ -181,8 +250,10 @@ function atOre()
 end
 
 function atBase()
-	--return (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1)
-	if distToBase() <= 5 then
+	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
+		--Collision.updatePosition(memory[1].x,memory[1].y)
+		return true
+	elseif distToBase() <= 2 then
 		Collision.updatePosition(memory[1].x,memory[1].y)
 		return true
 	else
@@ -195,7 +266,7 @@ function atPos(x, y)
 end
 
 function deloadAndRefill()
-	Event.emit{targetID=baseID, speed=5000, description="dockingRequest", table={oreCount=oreStorage, usedEnergy=MaxEnergy-energy}}
+	Event.emit{targetID=baseID, speed=5000, description="dockingRequest", table={oreCount=oreStorage, usedEnergy=MaxEnergy-energy,group=group}}
 end
 
 function colorGround() --NOT WORKING ATM
@@ -210,6 +281,11 @@ function moveTo(x,y)
 	--colorGround()
 	torusModul.moveTorus(x, y, PositionX, PositionY , ENV_WIDTH)
 	energy = energy -1
+end
+
+function completed()
+	STATE = "moveToBase"
+	complete = true
 end
 
 function cleanUp()
