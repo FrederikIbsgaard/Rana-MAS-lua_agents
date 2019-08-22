@@ -5,11 +5,11 @@ Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 
 -- amount of bases
-N = 2
+N = 6
 -- density of ore [procentage]
 D = 0.05
 -- base capacity of ore
-C = 30
+C = 300
 -- energi for robots [units]
 E = 200000
 -- grid size

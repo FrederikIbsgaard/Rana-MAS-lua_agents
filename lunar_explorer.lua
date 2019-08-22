@@ -34,11 +34,13 @@ torusModul = require "torus_modul"
 local memory = {}
 local transporterTable = {}
 local ore_color, destX, destY, group, stepCounter, STATE, baseID, taskOfferState, color, complete
-local energy, MaxEnergy, scanDim, P, S, I, Q
+local energy, MaxEnergy, scanDim, P, S, I, Q, M, G
 local targetMiner = nil
 local STATE = "NOSTATE"
 local agentColor = "green" --DELETE
 local stepCounterTwo = 0
+local searchTimeCounter = 0
+local timeOut = false
 -- EventHandler
 
 
@@ -52,6 +54,8 @@ function initializeAgent()
 	S = parameters.S -- memory size of robots
 	I = parameters.I -- fixed communication scope
 	Q = parameters.Q -- cost of movemnt
+	M = parameters.M
+	G = parameters.G
 
 	stepCounter = P
 	taskOfferState = "emitOffer"
@@ -94,8 +98,11 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
 			elseif eventDescription == "dockingRefused" then
 					energy = MaxEnergy
-					STATE = "findNewBase"
-
+					if M == 1 then
+						STATE = "findNewBase"
+					elseif M == 0 then
+						STATE = "baseDone"
+					end
 			--elseif eventDescription == "allOreCollected" and sourceID == group  then
 			--	completed()
 			--end
@@ -116,7 +123,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 		--	say("Explore #" ..ID .. " assigned to " .. group)
 				--STATE = "idle"
 			end
-		elseif eventTable.group ~= group then
+		elseif M == 1 and eventTable.group ~= group then
 			if eventDescription == "joinBase" then
 					baseID = eventTable.baseID
 					group = eventTable.group
@@ -133,7 +140,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
 
 
-			elseif eventDescription == "lookingForNewBase" then
+			elseif eventDescription == "lookingForNewBase" and not (STATE == "findNewBase" or STATE == "callForAgents") then
 				Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group, baseID=baseID, basePos={x=memory[1].x, y=memory[1].y}}}
 			end
 		end
@@ -185,6 +192,8 @@ function takeStep()
 			destX = memory[1].x
 			destY = memory[1].y
 			moveTo(destX, destY)
+		elseif atBase() and timeOut then
+			STATE = "baseDone"
 		else
 			STATE = "recharge"
 		end
@@ -209,7 +218,7 @@ function takeStep()
 			taskOfferState = "evaluateOffers"
 		elseif taskOfferState == "evaluateOffers" then
 			waitStepCounter = waitStepCounter + 1
-			if #transporterTable > 0 and waitStepCounter >= 2 then
+			if #transporterTable > 0 and waitStepCounter >= 1 then
 				local highestCap = 0
 				local cap = 0
 				for i=1, #transporterTable do
@@ -235,7 +244,7 @@ function takeStep()
 				--	taskOfferState = "emitOffer"
 				--	STATE = "recharge"
 				end
-			elseif waitStepCounter == 100 and #transporterTable == 0 then
+			elseif waitStepCounter >= 60 and #transporterTable == 0 then
 				while #memory > 1 do
 					memory [#memory] = nil
 				end
@@ -261,12 +270,18 @@ function takeStep()
 		if stepCounterTwo >= P then--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 			STATE = "callForAgents"
 		end
+		if searchTimeCounter >= G then
+			timeOut = true
+			STATE = "moveToBase"
+		end
+		searchTimeCounter = searchTimeCounter +1
 		stepCounterTwo = stepCounterTwo + 1
 	elseif STATE == "callForAgents" then
 		Event.emit{speed=5000, description="lookingForNewBase", table={group=group}}
 		STATE = "findNewBase"
 		stepCounterTwo = 0
 
+	elseif STATE == "baseDone" then
 	--elseif STATE == "findNearestBase" then
 	--	if #memory > 1 then
 	--		while #memory > 1 do
@@ -316,7 +331,7 @@ function colorGround() --NOT WORKING ATM
 end
 
 function atBase() -- CLEAN THIS UP! MAKE THE DROP ZONE LARGER TO AVOID STUCK AGENTS
-	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
+	if (PositionX==memory[1].x and PositionY==memory[1].y) then
 		--Collision.updatePosition(memory[1].x,memory[1].y)
 		return true
 	elseif distToBase() <= 2 then

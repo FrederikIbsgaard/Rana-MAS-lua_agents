@@ -29,13 +29,13 @@ torusModul = require "torus_modul"
 --
 local globallyUsedEnergy = 0
 local collectedOre = 0
-local neededOre, group, STATE, mode, newBase, I, full
+local neededOre, group, STATE, M, newBase, I, full
 
 function initializeAgent()
     local parameters = Shared.getTable("parameters")
     neededOre = parameters.C
     I = parameters.I
-    mode = parameters.M
+    M = parameters.M
     group = ID
     newBase = {}
     full = false
@@ -45,15 +45,17 @@ end
 -- EventHandler
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     if sourceID ~= ID and eventTable.group == group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
-        say("BASE event own group: " .. eventDescription)
+        --say("BASE event own group: " .. eventDescription)
         if eventDescription == "dockingRequest" then
             globallyUsedEnergy = globallyUsedEnergy + eventTable.usedEnergy
-
             if collectedOre >= neededOre then
                 Event.emit{targetID=sourceID, speed=5000, description="dockingRefused",table={group=group}}
-            elseif collectedOre <= neededOre then --elseif collectedOre+eventTable.oreCount <= neededOre then
+            elseif collectedOre + eventTable.oreCount < neededOre then
                 collectedOre = collectedOre + eventTable.oreCount
-                Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted", table={group=group,basePos={x=PositionX, y=PositionY}}}
+                Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted", table={group=group,basePos={x=PositionX, y=PositionY}, extraOre=0}}
+            elseif collectedOre + eventTable.oreCount >= neededOre then
+                collectedOre = neededOre
+                Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted", table={group=group,basePos={x=PositionX, y=PositionY}, extraOre=(collectedOre+eventTable.oreCount-neededOre)}}
             end
 
         --elseif eventDescription == "changebase" then
@@ -63,9 +65,9 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
             --say("New base found")
             --STATE = "newBaseFound"
         end
-    elseif sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
-      say("BASE event other group: " .. eventDescription)
-      if eventDescription == "lookingForNewBase" then
+    elseif M == 1 and sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+      --say("BASE event other group: " .. eventDescription)
+      if eventDescription == "lookingForNewBase" and collectedOre < neededOre then
         Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group, baseID=ID, basePos={x=PositionX, y=PositionY}}}
       end
     end
@@ -97,7 +99,13 @@ function takeStep()
         --Event.emit{targetGroup=group, speed=0, description="findNearestBase",table={group=group}}
     --elseif STATE == "newBaseFound" then
     --    Event.emit{targetGroup=group, speed=0, description="changeBaseTo", table={id=newBase[1].id,x=newBase[1].x,y=newBase[1].y,group=group}}
-        STATE = "done"
+        STATE = "operation"
+    elseif STATE == "operation" then
+        if collectedOre >= neededOre then
+            Agent.changeColor({r=255, g=255, b=255})
+            say("Base ID: " .. ID .. " Done")
+            STATE = "done"
+        end
     elseif STATE == "done" then
 
     end

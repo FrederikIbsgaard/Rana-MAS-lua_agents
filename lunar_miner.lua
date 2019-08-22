@@ -32,14 +32,17 @@ torusModul = require "torus_modul"
 
 --
 local memory = {}
-local group, oreStorage, MaxEnergy, energy, W, P, S, I, Q, ore_color
+local group, MaxEnergy, energy, W, P, S, I, Q, M, ore_color
+local oreStorage = 0
 local STATE = "NOSTATE"
 local baseID
 local LATCHED_STATE = "NOSTATE"
 local stepCounter, complete
 local stepCounterTwo = 0
+local searchTimeCounter = 0
 local destX = Stat.randomInteger(0,ENV_WIDTH)
 local destY = Stat.randomInteger(0,ENV_WIDTH)
+local timeOut = false
 
 function initializeAgent()
 	GridMove = true
@@ -54,6 +57,9 @@ function initializeAgent()
 	S = parameters.S -- memory size of robots
 	I = parameters.I -- fixed communication scope
 	Q = parameters.Q -- cost of movemnt
+	M = parameters.M -- mode
+	G = parameters.G -- world size
+
 	 -- transporter
 	complete = false
 	local color = Shared.getTable("miner_color")
@@ -71,12 +77,29 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 	end
 	if sourceID ~= ID and eventTable.group == group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
 		if eventDescription == "dockingAccepted" then
-			oreStorage = 0
-			energy = MaxEnergy
+			if M == 1 then
+				oreStorage = 0
+				energy = MaxEnergy
+				if eventTable.extraOre ~= 0 then -- this means that the base is now full so go find new base
+					oreStorage = eventTable.extraOre
+					STATE = "findNewBase"
+				end
+			elseif M == 0 then
+				oreStorage = 0
+				energy = MaxEnergy
+				if eventTable.extraOre ~= 0 then -- this means that the base is now full so go find new base
+					oreStorage = eventTable.extraOre
+					STATE = "baseDone"
+				end
+			end
 
 		elseif eventDescription == "dockingRefused" then
 				energy = MaxEnergy
-				STATE = "findNewBase"
+				if M == 1 then
+					STATE = "findNewBase"
+				elseif M == 0 then
+					STATE = "baseDone"
+				end
 
 		elseif eventDescription == "taskOffer" and STATE ~= "waitForObjective" and #memory ~= S then
 			Event.emit{targetID=sourceID, speed=5000, description="taskResponse", table={capacity=S-#memory, group=group}}--(W-oreStorage)}}--, minDist=minDistance}}
@@ -112,7 +135,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 		--	STATE = "idle"
 
 		end
-	elseif sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
+	elseif M == 1 and sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
 		if eventDescription == "joinBase" then
 			baseID = eventTable.baseID
 			group = eventTable.group
@@ -129,7 +152,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
 
 
-		elseif eventDescription == "lookingForNewBase" then
+		elseif eventDescription == "lookingForNewBase" and not (STATE == "findNewBase" or STATE == "callForAgents") then
 			Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group, baseID=baseID, basePos={x=memory[1].x, y=memory[1].y}}}
 		end
 	end
@@ -141,6 +164,8 @@ function takeStep()
 	if STATE == "idle" then
 		if #memory > 1  and energy == MaxEnergy then
 			STATE = "moveToOre"
+		else
+			deloadAndRefill()
 		end
 
 	elseif STATE == "moveToOre" then
@@ -179,6 +204,8 @@ function takeStep()
 	elseif STATE == "moveToBase" then
 		if not atBase() then
 			moveTo(memory[1].x, memory[1].y)
+		elseif atBase() and timeOut then
+			STATE = "baseDone"
 		else
 			deloadAndRefill()
 			STATE = "idle"
@@ -199,11 +226,20 @@ function takeStep()
 		if stepCounterTwo >= P then--Event.emit{targetGroup=group, speed=636, description="explore ping", table={scanP=P, dest={x=destX,y=destY}}}
 			STATE = "callForAgents"
 		end
+		if searchTimeCounter >= G then
+			timeOut = true
+			STATE = "moveToBase"
+		end
+		searchTimeCounter = searchTimeCounter + 1
 		stepCounterTwo = stepCounterTwo + 1
 	elseif STATE == "callForAgents" then
 		Event.emit{speed=5000, description="lookingForNewBase", table={group=group}}
 		STATE = "findNewBase"
 		stepCounterTwo = 0
+
+	elseif STATE == "baseDone" then
+			-- BASE IS FULL SO STAY IN BASE
+
 	end
 
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "pickUpOre" or STATE == "idle") then
@@ -245,8 +281,7 @@ function atOre()
 end
 
 function atBase()
-	if (PositionX==memory[1].x and PositionY==memory[1].y) or (PositionX==memory[1].x+1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y+1) or (PositionX==memory[1].x-1 and PositionY==memory[1].y) or (PositionX==memory[1].x and PositionY==memory[1].y-1) then
-		--Collision.updatePosition(memory[1].x,memory[1].y)
+	if (PositionX==memory[1].x and PositionY==memory[1].y) then
 		return true
 	elseif distToBase() <= 2 then
 		Collision.updatePosition(memory[1].x,memory[1].y)
