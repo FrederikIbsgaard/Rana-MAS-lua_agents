@@ -30,6 +30,7 @@ torusModul = require "torus_modul"
 local globallyUsedEnergy = 0
 local collectedOre = 0
 local neededOre, group, STATE, M, newBase, I, full
+local timeCounter = 0
 
 function initializeAgent()
     local parameters = Shared.getTable("parameters")
@@ -76,6 +77,7 @@ end
 
 function takeStep()
     --say("BASE: " .. STATE)
+    timeCounter = timeCounter + 1
     if STATE == "idle" then
         Event.emit{speed=5000, description="AcceptGroup", table={group=ID}}
         --STATE = "wait"
@@ -101,7 +103,7 @@ function takeStep()
     --    Event.emit{targetGroup=group, speed=0, description="changeBaseTo", table={id=newBase[1].id,x=newBase[1].x,y=newBase[1].y,group=group}}
         STATE = "operation"
     elseif STATE == "operation" then
-        if collectedOre >= neededOre then
+        if collectedOre >= neededOre or timeCounter == T then
             Agent.changeColor({r=255, g=255, b=255})
             say("Base ID: " .. ID .. " Done")
             STATE = "done"
@@ -114,6 +116,5 @@ end
 
 function cleanUp()
 	--say("Agent #: " .. ID .. " is done\n")
-  say("Number of collected Ore: " .. collectedOre)
-  say("Total Energy Consumption: " .. globallyUsedEnergy)
+  say("Base ID: " .. ID .. " Number of collected Ore: " .. collectedOre .. " Total Energy Consumption: " .. globallyUsedEnergy)
 end

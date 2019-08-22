@@ -5,27 +5,27 @@ Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 
 -- amount of bases
-N = 6
+N = 10
 -- density of ore [procentage]
 D = 0.05
 -- base capacity of ore
-C = 300
+C = 1000
 -- energi for robots [units]
-E = 200000
+E = 2000
 -- grid size
 G = ENV_WIDTH
 -- fixed communication scope
 I = 20
 -- coordination mode, cooperative = 1 or competitive 0
-M = 1
+M = 0
 -- initial perception scope
-P = 10
+P = 25
 -- cost of motion
 Q = 1
 -- memory size of robots
 S = 10
 -- Max number of cycles
-T = 100000
+T = 10000
 -- max number of ore a miner can carry
 W = 20
 -- number of explores
@@ -35,9 +35,9 @@ Y = 10
 
 -- VARIABLES
 background_color = {0,0,0}
-ore_color = {155,0,155}
+ore_color = {139,69,19}
 explorer_color = {0,255,0}
-miner_color = {0,255,255}
+miner_color = {0,0,255}
 
 function initializeAgent()
 
