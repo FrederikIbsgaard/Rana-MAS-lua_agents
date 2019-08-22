@@ -31,6 +31,7 @@ local globallyUsedEnergy = 0
 local collectedOre = 0
 local neededOre, group, STATE, M, newBase, I, full
 local timeCounter = 0
+local dataSent = false
 
 function initializeAgent()
     local parameters = Shared.getTable("parameters")
@@ -58,13 +59,6 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
                 collectedOre = neededOre
                 Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted", table={group=group,basePos={x=PositionX, y=PositionY}, extraOre=(collectedOre+eventTable.oreCount-neededOre)}}
             end
-
-        --elseif eventDescription == "changebase" then
-        --    Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted",table={group=group,basePos={x=PositionX, y=PositionY}}}
-
-            --table.insert(newBase, {id=eventTable.id,x=eventTable.x,y=eventTable.y})
-            --say("New base found")
-            --STATE = "newBaseFound"
         end
     elseif M == 1 and sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
       --say("BASE event other group: " .. eventDescription)
@@ -80,27 +74,7 @@ function takeStep()
     timeCounter = timeCounter + 1
     if STATE == "idle" then
         Event.emit{speed=5000, description="AcceptGroup", table={group=ID}}
-        --STATE = "wait"
         STEP_RESOLUTION = 5 -- runs takeStep every 5 steps
-    --elseif STATE == "wait" then
-    --    if mode then
-    --        Event.emit{targetGroup=group, speed=0, description="baseHere",table={group=group}}
-    --    end
-        --if collectedOre >= neededOre then
-        --    full = true
-        --    if not(mode) then
-        --        Event.emit{targetGroup=group, speed=0, description="allOreCollected",table={group=group}}
-        --        say(ID.." All ore collected returning agents")
-        --
-        --        --STATE = "complete"
-        --    elseif mode then
-        --        STATE = "findNewBase"
-        --    end
-        --end
-    --elseif STATE == "findNewBase" then
-        --Event.emit{targetGroup=group, speed=0, description="findNearestBase",table={group=group}}
-    --elseif STATE == "newBaseFound" then
-    --    Event.emit{targetGroup=group, speed=0, description="changeBaseTo", table={id=newBase[1].id,x=newBase[1].x,y=newBase[1].y,group=group}}
         STATE = "operation"
     elseif STATE == "operation" then
         if collectedOre >= neededOre or timeCounter == T then
@@ -109,7 +83,13 @@ function takeStep()
             STATE = "done"
         end
     elseif STATE == "done" then
+      if dataSent == true then
 
+      else
+        --say("Base " .. collectedOre .. " " .. globallyUsedEnergy)
+        Event.emit{targetID=2, speed=5000, description="dataFromBase", table={oresCollected=collectedOre, energyUsed=globallyUsedEnergy}}
+        dataSent = true
+      end
     end
 end
 

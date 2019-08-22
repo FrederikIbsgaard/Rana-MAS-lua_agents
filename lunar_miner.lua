@@ -45,6 +45,9 @@ local destY = Stat.randomInteger(0,ENV_WIDTH)
 local timeOut = false
 local lookingForNewBase = false
 local t = 0
+local totalEnergyUsed = 0
+local totalOresCollected = 0
+local dataSent = false
 
 function initializeAgent()
 	GridMove = true
@@ -234,7 +237,13 @@ function takeStep()
 
 	elseif STATE == "baseDone" then
 			-- BASE IS FULL SO STAY IN BASE
+		if dataSent == true then
 
+    else
+			--say(totalOresCollected .. " " .. totalEnergyUsed)
+			Event.emit{targetID=2, speed=5000, description="dataFromTransporter", table={oresCollected=totalOresCollected, energyUsed=totalEnergyUsed}}
+			dataSent = true
+		end
 	end
 
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "pickUpOre" or STATE == "idle") then
@@ -250,6 +259,7 @@ function mineOre()
 	l_modifyMap(PositionX,PositionY, 0, 0, 0)
 	oreStorage = oreStorage + 1
 	energy = energy - 1
+	totalOresCollected = totalOresCollected + 1
 end
 
 function findClosestOreIndex()
@@ -293,6 +303,7 @@ end
 
 function deloadAndRefill()
 	Event.emit{targetID=baseID, speed=5000, description="dockingRequest", table={oreCount=oreStorage, usedEnergy=MaxEnergy-energy,group=group}}
+	totalEnergyUsed = totalEnergyUsed + (MaxEnergy-energy)
 end
 
 function colorGround() --NOT WORKING ATM

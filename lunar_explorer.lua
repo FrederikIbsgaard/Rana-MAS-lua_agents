@@ -43,6 +43,8 @@ local searchTimeCounter = 0
 local timeOut = false
 local lookingForNewBase = false
 local t = 0
+local totalEnergyUsed = 0
+local dataSent = false
 -- EventHandler
 
 
@@ -184,6 +186,7 @@ function takeStep()
 	elseif STATE == "recharge" then
 			if energy ~= MaxEnergy then
 				Event.emit{targetID=baseID, speed=0, description="dockingRequest", table={oreCount=0,usedEnergy=MaxEnergy-energy,group=group}}
+				totalEnergyUsed = totalEnergyUsed + (MaxEnergy-energy)
 			elseif #memory ~= 1 then
 				STATE = "taskOffer"
 			else
@@ -258,7 +261,13 @@ function takeStep()
 		stepCounterTwo = 0
 
 	elseif STATE == "baseDone" then
-		-- STAY HERE WHEN THE BASE IS DONE
+		if dataSent == true then
+
+		else
+			--say(0 .. " " .. totalEnergyUsed)
+			Event.emit{targetID=2, speed=5000, description="dataFromExplorer", table={oresCollected=0, energyUsed=totalEnergyUsed}}
+			dataSent = true
+		end
 	end
 	if energy < distToBase() + (MaxEnergy*0.1) and not (STATE == "recharge" or STATE == "idle") then
 		STATE = "moveToBase"

@@ -5,11 +5,11 @@ Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 
 -- amount of bases
-N = 10
+N = 4
 -- density of ore [procentage]
 D = 0.05
 -- base capacity of ore
-C = 1000
+C = 200
 -- energi for robots [units]
 E = 2000
 -- grid size
@@ -75,7 +75,11 @@ function initializeAgent()
     say("Map has been initialized")
 
     local data_table = {}
-	local ids = {}
+	  local ids = {}
+    local ID = Agent.addAgent("lunar_dataCollector.lua",0,0)
+    table.insert(ids, ID)
+    data_table[ID] = {call_amount = 0}
+
     local baseCordinates = {}
     for i = 1, N do
         local placed = false
@@ -103,25 +107,6 @@ function initializeAgent()
             end
         end
     end
-
-    --[[for i=1, N do
-        x = baseCordinates[i][1]
-        y = baseCordinates[i][2]
-        -- give each base explores
-        for i=1,X do
-            local ID = Agent.addAgent("lunar_explorer.lua",x,y)
-            table.insert(ids, ID)
-            data_table[ID] = {call_amount = 0}
-        end
-        -- gave each base miners
-        for i=1,Y do
-            local ID = Agent.addAgent("lunar_miner.lua",x,y)
-            table.insert(ids, ID)
-            data_table[ID] = {call_amount = 0}
-        end
-    end--]]
-
-
 
     say("All agents initialized")
 
