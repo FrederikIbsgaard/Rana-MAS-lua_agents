@@ -118,6 +118,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 			end
 		elseif eventTable.group ~= group then
 			if eventDescription == "joinBase" then
+					baseID = eventTable.baseID
 					group = eventTable.group
 					local newBase = eventTable.basePos
 					while #memory > 0 do
@@ -128,28 +129,19 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 					STATE = "moveToBase"
 
 						-- color change to see base swap
-					local red = 0
-					local blue = 0
-					if group == 2 then
-						red = 255
-						blue = 0
-					elseif group == 23 then
-						blue = 255
-						red = 0
-					end
 					Agent.changeColor({r=255, g=0, b=0})
 
 
 
 			elseif eventDescription == "lookingForNewBase" then
-				Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group,basePos={x=memory[1].x, y=memory[1].y}}}
+				Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group, baseID=baseID, basePos={x=memory[1].x, y=memory[1].y}}}
 			end
 		end
 	end
 end
 
 function takeStep()
-	say("EXPLORER: " .. STATE)
+	--say("EXPLORER: " .. STATE)
 	if STATE == "idle" then
 		destX = Stat.randomInteger(0,ENV_WIDTH)
 		destY = Stat.randomInteger(0,ENV_WIDTH)
@@ -197,7 +189,6 @@ function takeStep()
 			STATE = "recharge"
 		end
 	elseif STATE == "recharge" then
-			say(energy .. " E M " .. #memory)
 			if energy ~= MaxEnergy then
 				Event.emit{targetID=baseID, speed=0, description="dockingRequest", table={oreCount=0,usedEnergy=MaxEnergy-energy,group=group}}
 				--energy = energy -1

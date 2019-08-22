@@ -56,8 +56,8 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
                 Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted", table={group=group,basePos={x=PositionX, y=PositionY}}}
             end
 
-        elseif eventDescription == "changebase" then
-            Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted",table={group=group,basePos={x=PositionX, y=PositionY}}}
+        --elseif eventDescription == "changebase" then
+        --    Event.emit{targetID=sourceID, speed=5000, description="dockingAccepted",table={group=group,basePos={x=PositionX, y=PositionY}}}
 
             --table.insert(newBase, {id=eventTable.id,x=eventTable.x,y=eventTable.y})
             --say("New base found")
@@ -66,7 +66,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
     elseif sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
       say("BASE event other group: " .. eventDescription)
       if eventDescription == "lookingForNewBase" then
-        Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group,basePos={x=PositionX, y=PositionY}}}
+        Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group, baseID=ID, basePos={x=PositionX, y=PositionY}}}
       end
     end
 

@@ -114,28 +114,23 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 		end
 	elseif sourceID ~= ID and eventTable.group ~= group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
 		if eventDescription == "joinBase" then
+			baseID = eventTable.baseID
 			group = eventTable.group
-			memory[1].x = eventTable.basePos.x
-			memory[1].y = eventTable.basePos.y
+			local newBase = eventTable.basePos
+			while #memory > 0 do
+				memory [#memory] = nil
+			end
+			table.insert(memory, {x=newBase.x, y=newBase.y})
 			--deloadAndRefill()
 			STATE = "moveToBase"
 
 			-- color change to see base swap
-			local red = 0
-			local blue = 0
-			if group == 2 then
-				red = 255
-				blue = 0
-			elseif group == 23 then
-				blue = 255
-				red = 0
-			end
 			Agent.changeColor({r=0, g=0, b=255})
 
 
 
 		elseif eventDescription == "lookingForNewBase" then
-			Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group,basePos={x=memory[1].x, y=memory[1].y}}}
+			Event.emit{targetID=sourceID, speed=5000, description="joinBase",table={group=group, baseID=baseID, basePos={x=memory[1].x, y=memory[1].y}}}
 		end
 	end
 end
