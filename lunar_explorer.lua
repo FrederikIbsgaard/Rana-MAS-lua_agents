@@ -45,6 +45,8 @@ local lookingForNewBase = false
 local t = 0
 local totalEnergyUsed = 0
 local dataSent = false
+local file1, file2
+local totalOresScanned = 0
 -- EventHandler
 
 
@@ -68,6 +70,9 @@ function initializeAgent()
 	ore_color = Shared.getTable("ore_color")
 	color = Shared.getTable("explorer_color")
 	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
+
+	file1 = io.open("explorerDataScanned" .. ID .. ".csv", "w")
+	file2 = io.open("explorerDataEnergy" .. ID .. ".csv", "w")
 
 end
 
@@ -133,6 +138,9 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
+	file1:write(totalOresScanned .. ",")
+	file2:write(totalEnergyUsed .. ",")
+
 	t = t + 1
 	if t == T then
 		timeOut = true
@@ -314,12 +322,14 @@ function _scanForOre()
 	energy = energy - P
 	local x = 0
 	local y = 0
+	local memBefore = #memory
 	if oreTable ~= nil then
 		for i=1, #oreTable do
 			if #memory ~= S then
 				table.insert(memory, {x=oreTable[i].posX, y=oreTable[i].posY})
 			end
 		end
+		totalOresScanned = totalOresScanned + (#memory-memBefore)
 		local oreCount = #oreTable
 		for i=1, #oreTable do
 			x = x + oreTable[i].posX
@@ -352,5 +362,7 @@ function completed()
 end
 
 function cleanUp()
+	file1:close()
+  file2:close()
 	--say("Agent #: " .. ID .. " is done\n")
 end

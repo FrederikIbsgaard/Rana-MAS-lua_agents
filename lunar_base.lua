@@ -32,7 +32,7 @@ local collectedOre = 0
 local neededOre, group, STATE, T, M, newBase, I, full
 local timeCounter = 0
 local dataSent = false
-local file
+local file1, file2
 
 function initializeAgent()
     local parameters = Shared.getTable("parameters")
@@ -45,7 +45,8 @@ function initializeAgent()
     full = false
     STATE = "idle"
 
-    file = io.open("baseData" .. numberOfIterations .. ".csv", "w")
+    file1 = io.open("baseDataOre" .. ID .. ".csv", "w")
+    file2 = io.open("baseDataEnergy" .. ID .. ".csv", "w")
 
 end
 -- EventHandler
@@ -74,7 +75,8 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
-    file:write(collectedOre .. ",")
+    file1:write(collectedOre .. ",")
+    file2:write(globallyUsedEnergy .. ",")
     --say("BASE: " .. STATE)
     timeCounter = timeCounter + 1
     if STATE == "idle" then
@@ -102,5 +104,6 @@ end
 function cleanUp()
 	--say("Agent #: " .. ID .. " is done\n")
   say("Base ID: " .. ID .. " Number of collected Ore: " .. collectedOre .. " Total Energy Consumption: " .. globallyUsedEnergy)
-  file:close()
+  file1:close()
+  file2:close()
 end

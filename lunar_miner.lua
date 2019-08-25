@@ -48,6 +48,8 @@ local t = 0
 local totalEnergyUsed = 0
 local totalOresCollected = 0
 local dataSent = false
+local file1, file2
+local oresMissed = 0
 
 function initializeAgent()
 	GridMove = true
@@ -71,6 +73,10 @@ function initializeAgent()
 	local color = Shared.getTable("miner_color")
 	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
 	--Collision.updatePosition(100, 100)
+
+	file1 = io.open("transporterDataOreCollected" .. ID .. ".csv", "w")
+	file2 = io.open("transporterDataOresMissed" .. ID .. ".csv", "w")
+
 end
 
 function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
@@ -153,6 +159,10 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
+	file1:write(totalOresCollected .. ",")
+	file2:write(oresMissed .. ",")
+
+
 	t = t + 1
 	if t == T then
 		timeOut = true
@@ -181,6 +191,7 @@ function takeStep()
 				table.remove(memory, closestIndex)
 				STATE = "pickUpOre"
 			elseif not atOre() then
+				oresMissed = oresMissed + 1
 				table.remove(memory, closestIndex)
 				if #memory == 1 then
 					STATE = "moveToBase"
@@ -326,5 +337,7 @@ function completed()
 end
 
 function cleanUp()
+	file1:close()
+  file2:close()
 	--say("Agent #: " .. ID .. " is done\n")
 end
