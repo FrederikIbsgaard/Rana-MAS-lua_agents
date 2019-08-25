@@ -9,7 +9,7 @@ local baseDataTable = {} -- type, id, ores, energy
 local transporterDataTable = {}
 local explorerDataTable = {}
 
-local C, D, E, G, I, M, N, P, Q, S, T, W, X, Y, T
+local C, D, E, G, I, M, N, P, Q, S, T, W, X, Y, T, numberOfIterations
 
 function initializeAgent()
   local parameters = Shared.getTable("parameters")
@@ -27,6 +27,7 @@ function initializeAgent()
   W = parameters.W
   X = parameters.X
   Y = parameters.Y
+  numberOfIterations = parameters.numberOfIterations
   Agent.changeColor({r=0, g=0, b=0})
 end
 
@@ -44,17 +45,26 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 
 end
 
+--function takeStep()
+  --say(#baseDataTable)
+  --say(#transporterDataTable)
+  --say(#explorerDataTable)
+  --if ((#baseDataTable+#transporterDataTable+#explorerDataTable) == (X+Y+N)) then
+  --  Agent.remove(ID)
+  --end
+--end
+
 function cleanUp()
-  file = io.open("MAS_X_Y_P_I_E_S_W_".. X .. "_" .. Y .. "_" .. P .. "_" .. I .. "_" .. E .. "_" .. S .. "_" .. W .. ".csv", "w")
-  file:write("Variables,"..C..","..D..","..E..","..G..","..I..","..M..","..N..","..P..","..Q..","..S..","..T..","..P..","..X..","..Y..","..T.."\n")
+  file = io.open("MAS_N_".. N .. "_I_" .. I .. "_P_" .. P .. "_W_" .. W .. "_X_" .. X .. "_Y_" .. Y .. "_M_" .. M .. "_S_" .. S .. "_D_" .. D .. "_" .. numberOfIterations .. ".csv", "w")
+  file:write("0,"..D..","..I..","..P.."\n0,"..W..","..X..","..Y.."\n0,"..N..","..M..","..S.."\n")
   for i=1,#baseDataTable do
-    file:write("base,"..baseDataTable[i].id..","..baseDataTable[i].ores..","..baseDataTable[i].energy.."\n")
+    file:write("1,"..baseDataTable[i].id..","..baseDataTable[i].ores..","..baseDataTable[i].energy.."\n")
   end
   for i=1,#transporterDataTable do
-    file:write("transporter,"..transporterDataTable[i].id..","..transporterDataTable[i].ores..","..transporterDataTable[i].energy.."\n")
+    file:write("2,"..transporterDataTable[i].id..","..transporterDataTable[i].ores..","..transporterDataTable[i].energy.."\n")
   end
   for i=1,#explorerDataTable do
-    file:write("explorer,"..explorerDataTable[i].id..","..explorerDataTable[i].ores..","..explorerDataTable[i].energy.."\n")
+    file:write("3,"..explorerDataTable[i].id..","..explorerDataTable[i].ores..","..explorerDataTable[i].energy.."\n")
   end
   file:close()
 end

@@ -5,45 +5,52 @@ Map = require "ranalib_map"
 Shared = require "ranalib_shared"
 
 -- amount of bases
-N = 4
+N = 3
 -- density of ore [procentage]
 D = 0.05
+--D = 0.05
 -- base capacity of ore
-C = 200
+C = 100
 -- energi for robots [units]
-E = 2000
+E = 1000
 -- grid size
 G = ENV_WIDTH
 -- fixed communication scope
-I = 20
+I = 10
+--I = 20
 -- coordination mode, cooperative = 1 or competitive 0
-M = 0
+M = 1
 -- initial perception scope
-P = 25
+P = 10
+--P = 10
 -- cost of motion
 Q = 1
--- memory size of robots
-S = 10
 -- Max number of cycles
-T = 10000
+T = 3000
 -- max number of ore a miner can carry
-W = 20
+W = 1
+--W = 20
 -- number of explores
+--X = Shared.getNumber(2)
 X = 10
 -- number of miners
+--Y = Shared.getNumber(3)
 Y = 10
-
+-- memory size of robots
+--S = X+Y-1
+S = 19
 -- VARIABLES
 background_color = {0,0,0}
 ore_color = {139,69,19}
 explorer_color = {0,255,0}
 miner_color = {0,0,255}
 
-function initializeAgent()
+numberOfIterations = 10
 
+function initializeAgent()
     --StepMultiple = 1000
     say("Master Agent#: " .. ID .. " has been initialized")
-    local parameters = {N=N, D=D, C=C, E=E, G=G, I=I, M=M, P=P, Q=Q, S=S, T=T, W=W, X=X, Y=Y}
+    local parameters = {numberOfIterations=numberOfIterations, N=N, D=D, C=C, E=E, G=G, I=I, M=M, P=P, Q=Q, S=S, T=T, W=W, X=X, Y=Y}
     Shared.storeTable("background_color", background_color)
     Shared.storeTable("ore_color", ore_color)
     Shared.storeTable("explorer_color", explorer_color)

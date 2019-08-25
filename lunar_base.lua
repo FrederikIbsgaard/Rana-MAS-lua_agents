@@ -29,7 +29,7 @@ torusModul = require "torus_modul"
 --
 local globallyUsedEnergy = 0
 local collectedOre = 0
-local neededOre, group, STATE, M, newBase, I, full
+local neededOre, group, STATE, T, M, newBase, I, full
 local timeCounter = 0
 local dataSent = false
 
@@ -38,6 +38,7 @@ function initializeAgent()
     neededOre = parameters.C
     I = parameters.I
     M = parameters.M
+    T = parameters.T
     group = ID
     newBase = {}
     full = false
@@ -79,7 +80,7 @@ function takeStep()
     elseif STATE == "operation" then
         if collectedOre >= neededOre or timeCounter == T then
             Agent.changeColor({r=255, g=255, b=255})
-            say("Base ID: " .. ID .. " Done")
+            --say("Base ID: " .. ID .. " Done")
             STATE = "done"
         end
     elseif STATE == "done" then

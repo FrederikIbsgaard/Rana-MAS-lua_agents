@@ -78,7 +78,7 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 		group = eventTable.group
 		Agent.joinGroup(group)
 		baseID = group
-		say("Miner #" ..ID .. " assigned to " .. group)
+		--say("Miner #" ..ID .. " assigned to " .. group)
 		STATE = "idle"
 	end
 	if sourceID ~= ID and eventTable.group == group and torusModul.distanceToAgent(PositionX, PositionY, sourceX, sourceY) <= I then
