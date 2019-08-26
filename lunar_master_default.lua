@@ -11,33 +11,33 @@ D = 0.04
 --D = 0.05
 -- base capacity of ore
 C = 175 -- energi for robots [units]
-E = 1000
+E = 960
 -- grid size
 G = ENV_WIDTH
 -- fixed communication scope
-I = 10
+I = 33
 --I = 20
 -- coordination mode, cooperative = 1 or competitive 0
 M = 0
 -- initial perception scope
-P = 10
+P = 7
 --P = 10
 -- cost of motion
 Q = 1.4
 -- Max number of cycles
 T = 77500
 -- max number of ore a miner can carry
-W = 35
+W = 7
 --W = 20
 -- number of explores
 --X = Shared.getNumber(2)
-X = 10
+X = 6
 -- number of miners
 --Y = Shared.getNumber(3)
-Y = 10
+Y = 7
 -- memory size of robots
 --S = X+Y-1
-S = 19
+S = 11
 -- VARIABLES
 background_color = {0,0,0}
 ore_color = {139,69,19}

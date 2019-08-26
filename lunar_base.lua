@@ -45,8 +45,13 @@ function initializeAgent()
     full = false
     STATE = "idle"
 
-    file1 = io.open("baseDataOre" .. ID .. ".csv", "w")
-    file2 = io.open("baseDataEnergy" .. ID .. ".csv", "w")
+    --file1 = io.open("baseDataOre" .. ID .. ".csv", "w")
+    --file2 = io.open("baseDataEnergy" .. ID .. ".csv", "w")
+
+    --file1 = io.open("baseDataOre" .. ID .. ".csv", "a")
+    --file2 = io.open("baseDataEnergy" .. ID .. ".csv", "a")
+    --file1:write("\n")
+  	--file2:write("\n")
 
 end
 -- EventHandler
@@ -75,8 +80,8 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
-    file1:write(collectedOre .. ",")
-    file2:write(globallyUsedEnergy .. ",")
+    --file1:write(collectedOre .. ",")
+    --file2:write(globallyUsedEnergy .. ",")
     --say("BASE: " .. STATE)
     timeCounter = timeCounter + 1
     if STATE == "idle" then
@@ -104,6 +109,6 @@ end
 function cleanUp()
 	--say("Agent #: " .. ID .. " is done\n")
   say("Base ID: " .. ID .. " Number of collected Ore: " .. collectedOre .. " Total Energy Consumption: " .. globallyUsedEnergy)
-  file1:close()
-  file2:close()
+  --file1:close()
+  --file2:close()
 end

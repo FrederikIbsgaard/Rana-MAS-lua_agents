@@ -71,8 +71,15 @@ function initializeAgent()
 	color = Shared.getTable("explorer_color")
 	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
 
-	file1 = io.open("explorerDataScanned" .. ID .. ".csv", "w")
-	file2 = io.open("explorerDataEnergy" .. ID .. ".csv", "w")
+
+	--file1 = io.open("explorerDataScanned" .. ID .. ".csv", "w")
+	--file2 = io.open("explorerDataEnergy" .. ID .. ".csv", "w")
+
+	--file1 = io.open("explorerDataScanned" .. ID .. ".csv", "a")
+	--file2 = io.open("explorerDataEnergy" .. ID .. ".csv", "a")
+	--file1:write("\n")
+	--file2:write("\n")
+
 
 end
 
@@ -138,8 +145,8 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
-	file1:write(totalOresScanned .. ",")
-	file2:write(totalEnergyUsed .. ",")
+	--file1:write(totalOresScanned .. ",")
+	--file2:write(totalEnergyUsed .. ",")
 
 	t = t + 1
 	if t == T then
@@ -362,7 +369,7 @@ function completed()
 end
 
 function cleanUp()
-	file1:close()
-  file2:close()
+	--file1:close()
+  --file2:close()
 	--say("Agent #: " .. ID .. " is done\n")
 end

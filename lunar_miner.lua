@@ -48,7 +48,7 @@ local t = 0
 local totalEnergyUsed = 0
 local totalOresCollected = 0
 local dataSent = false
-local file1, file2
+local file1, file2, file3
 local oresMissed = 0
 
 function initializeAgent()
@@ -74,8 +74,16 @@ function initializeAgent()
 	Agent.changeColor({r=color[1], g=color[2], b=color[3]})
 	--Collision.updatePosition(100, 100)
 
-	file1 = io.open("transporterDataOreCollected" .. ID .. ".csv", "w")
-	file2 = io.open("transporterDataOresMissed" .. ID .. ".csv", "w")
+	--file1 = io.open("transporterDataOreCollected" .. ID .. ".csv", "w")
+	--file2 = io.open("transporterDataOresMissed" .. ID .. ".csv", "w")
+	--file3 = io.open("transporterEnergy" .. ID .. ".csv", "w")
+
+	--file1 = io.open("transporterDataOreCollected" .. ID .. ".csv", "a")
+	--file2 = io.open("transporterDataOresMissed" .. ID .. ".csv", "a")
+	--file3 = io.open("transporterEnergy" .. ID .. ".csv", "a")
+	--file1:write("\n")
+	--file2:write("\n")
+	--file3:write("\n")
 
 end
 
@@ -159,8 +167,9 @@ function handleEvent(sourceX, sourceY, sourceID, eventDescription, eventTable)
 end
 
 function takeStep()
-	file1:write(totalOresCollected .. ",")
-	file2:write(oresMissed .. ",")
+	--file1:write(totalOresCollected .. ",")
+	--file2:write(oresMissed .. ",")
+	--file3:write(totalEnergyUsed .. ",")
 
 
 	t = t + 1
@@ -337,7 +346,8 @@ function completed()
 end
 
 function cleanUp()
-	file1:close()
-  file2:close()
+	--file1:close()
+  --file2:close()
+	--file3:close()
 	--say("Agent #: " .. ID .. " is done\n")
 end
